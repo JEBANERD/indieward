@@ -1,0 +1,67 @@
+name: engines
+
+# Real engine exports: do IndieWard's trap markers survive each engine's build pipeline?
+on:
+  push:
+    branches: [main]
+    paths: ["src/indieward/traps.py", "src/indieward/registry.py", "tests/engines/**", ".github/workflows/engines.yml"]
+  pull_request:
+    paths: ["src/indieward/traps.py", "src/indieward/registry.py", "tests/engines/**", ".github/workflows/engines.yml"]
+  schedule:
+    - cron: "41 9 * * 1" # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.3-stable"
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest -q -m engine tests/engines/test_web.py
+
+  godot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Godot (headless-capable editor binary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GODOT_VERSION" -R godotengine/godot -p "Godot_v${GODOT_VERSION}_linux.x86_64.zip" -D /tmp/godot
+          unzip -q /tmp/godot/*.zip -d /tmp/godot
+          sudo mv /tmp/godot/Godot_v${GODOT_VERSION}_linux.x86_64 /usr/local/bin/godot
+          godot --version
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest -q -m engine tests/engines/test_godot.py
+
+  rojo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Rojo (latest release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download -R rojo-rbx/rojo -p "*linux-x86_64.zip" -D /tmp/rojo
+          unzip -q /tmp/rojo/*.zip -d /tmp/rojo
+          sudo mv /tmp/rojo/rojo /usr/local/bin/rojo
+          rojo --version
+      - run: python -m pip install -e ".[dev,roblox]"
+      - run: python -m pytest -q -m engine tests/engines/test_rojo.py

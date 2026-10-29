@@ -1,0 +1,76 @@
+name: claude-headless
+
+# Works one card from docs/headless/QUEUE.md per run and opens a pull request for Jasper to review.
+# Claude never pushes or merges: the steps after it push the branch and open the PR (or an issue if blocked).
+on:
+  schedule:
+    - cron: "17 7 * * 1-5" # weekdays, about 3 am New York
+  workflow_dispatch:
+    inputs:
+      card:
+        description: "Card id from docs/headless/QUEUE.md (blank = next todo card)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  id-token: write
+
+concurrency:
+  group: claude-headless
+  cancel-in-progress: false
+
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # A personal token lets the PR trigger CI; GITHUB_TOKEN-made PRs don't start other workflows.
+          token: ${{ secrets.IW_BOT_TOKEN || github.token }}
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: python -m pip install -e ".[mcp,dev]"
+      - name: Work branch
+        run: |
+          git config user.name "indieward-headless"
+          git config user.email "headless@users.noreply.github.com"
+          git checkout -b "headless/run-${{ github.run_id }}"
+          mkdir -p .headless
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the IndieWard headless worker. Read docs/headless/RUNNER.md and follow it exactly.
+            Card to work: "${{ inputs.card }}" (blank means: the next eligible card in docs/headless/QUEUE.md).
+          claude_args: >-
+            --max-turns 150
+            --allowedTools "Bash,Read,Edit,Write,Glob,Grep"
+            --disallowedTools "Bash(git push:*),Bash(gh pr merge:*),Bash(gh release:*)"
+
+      - name: Open PR or issue
+        env:
+          GH_TOKEN: ${{ secrets.IW_BOT_TOKEN || github.token }}
+        run: |
+          if [ -f .headless/BLOCKED.md ]; then
+            gh issue create --title "$(head -n1 .headless/TITLE.txt 2>/dev/null || echo 'Headless run blocked')" \
+              --body-file .headless/BLOCKED.md --label headless || \
+            gh issue create --title "Headless run blocked" --body-file .headless/BLOCKED.md
+          fi
+          if [ "$(git rev-list --count origin/main..HEAD)" -gt 0 ]; then
+            git push -u origin HEAD
+            gh pr create --base main --head "$(git branch --show-current)" \
+              --title "$(head -n1 .headless/TITLE.txt 2>/dev/null || echo 'Headless run ${{ github.run_id }}')" \
+              --body-file .headless/PR_BODY.md
+          else
+            echo "No commits; nothing to open."
+          fi

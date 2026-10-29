@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "indieward"
+version = "0.1.0"
+description = "Anti-clone toolkit for indie game developers: signed timestamped proof, watermarks, trap markers, plagiarism checks and takedown drafts. Runs locally; never sends anything."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "pillow>=10.0",
+  "cryptography>=41",
+  "reportlab>=4.0",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.2"]  # 1.x (FastMCP) and 2.x (MCPServer) both supported
+roblox = ["zstandard>=0.22"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+indieward = "indieward.cli:main"
+indieward-mcp = "indieward.mcp_server:main"
+indieward-hook = "indieward.hooks:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not engine and not live'"
+markers = [
+  "engine: needs a game engine or build tool on PATH (engines workflow)",
+  "live: talks to real outside services (live workflow; set INDIEWARD_LIVE=1)",
+]

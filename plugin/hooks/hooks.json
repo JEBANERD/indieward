@@ -1,0 +1,16 @@
+{
+  "description": "IndieWard guardrails: never send takedown notices for the user; show vault status at session start.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|mcp__.*",
+        "hooks": [{ "type": "command", "command": "indieward-hook block-send", "timeout": 10 }]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [{ "type": "command", "command": "indieward-hook session-status", "timeout": 15 }]
+      }
+    ]
+  }
+}

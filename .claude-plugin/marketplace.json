@@ -1,0 +1,16 @@
+{
+  "name": "indieward",
+  "owner": { "name": "IndieWard contributors" },
+  "metadata": {
+    "description": "IndieWard: free, open-source anti-clone toolkit for indie game developers."
+  },
+  "plugins": [
+    {
+      "name": "indieward",
+      "source": "./plugin",
+      "description": "Guided game protection: ownership proof, watermarks, trap markers, clone checks and takedown drafts (never sent for you).",
+      "version": "0.1.0",
+      "category": "productivity"
+    }
+  ]
+}

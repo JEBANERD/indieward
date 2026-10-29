@@ -71,6 +71,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.IW_BOT_TOKEN || github.token }}
         run: |
+          # claude-code-action points origin at its own app token and revokes it when it finishes.
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          gh auth setup-git
           if [ -f .headless/BLOCKED.md ]; then
             gh issue create --title "$(head -n1 .headless/TITLE.txt 2>/dev/null || echo 'Headless run blocked')" \
               --body-file .headless/BLOCKED.md --label headless || \

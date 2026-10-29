@@ -20,7 +20,7 @@ def local_tsa(tmp_path_factory):
     cfg.write_text(f"""[ tsa ]
 default_tsa = tsa_config1
 [ tsa_config1 ]
-dir = {d}
+dir = {d.as_posix()}
 serial = $dir/serial
 crypto_device = builtin
 signer_cert = $dir/tsa.crt

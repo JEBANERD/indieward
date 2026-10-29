@@ -183,7 +183,7 @@ def test_audio_watermark_survives_reencode(world, tmp_path):
     mp3 = tmp_path / "theme.mp3"
     mediaio.transcode(marked, mp3, ["-b:a", "128k"])
     trimmed = tmp_path / "theme_trim.ogg"
-    mediaio.transcode(marked, trimmed, ["-ss", "1.7", "-c:a", "libvorbis", "-q:a", "5"])
+    mediaio.transcode(marked, trimmed, ["-ss", "1.7", *mediaio.vorbis_args(5)])
     for f in (mp3, trimmed):
         r = cli.detect_file(v, f)
         assert r["detected"], (f, r)

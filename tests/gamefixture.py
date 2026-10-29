@@ -360,7 +360,7 @@ def make_clone(orig_root: Path, orig_build_zip: Path, clone_root: Path) -> Path:
     for f in sorted((orig_root / "art").glob("*.png")):
         _recolor(Image.open(f).convert("RGB")).save(work / "art" / f"sprite_{f.stem[-1]}.png")
     # copied music, re-encoded (watermark stripped: built from the unmarked original)
-    mediaio.transcode(orig_root / "audio" / "theme.wav", work / "music.ogg", ["-c:a", "libvorbis", "-q:a", "4"])
+    mediaio.transcode(orig_root / "audio" / "theme.wav", work / "music.ogg", mediaio.vorbis_args(4))
     out = clone_root / "NightFlightMoths.zip"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(work.rglob("*")):

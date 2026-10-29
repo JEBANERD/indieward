@@ -23,6 +23,17 @@ def _bin(name: str) -> str:
     return path
 
 
+def vorbis_args(quality: int = 6) -> list[str]:
+    """Ogg Vorbis encoder arguments. Some FFmpeg builds (e.g. Homebrew) lack libvorbis; use the native encoder then."""
+    try:
+        out = subprocess.run([_bin("ffmpeg"), "-hide_banner", "-encoders"], capture_output=True, text=True).stdout
+    except MediaToolMissing:
+        out = ""
+    if "libvorbis" in out:
+        return ["-c:a", "libvorbis", "-q:a", str(quality)]
+    return ["-c:a", "vorbis", "-strict", "-2", "-ac", "2", "-b:a", "192k"]
+
+
 def have_ffmpeg() -> bool:
     return bool(shutil.which("ffmpeg") and shutil.which("ffprobe"))
 
@@ -72,7 +83,7 @@ def write_audio(path, data: np.ndarray, sr: int, codec_args: list[str] | None = 
         codec_args = {
             ".wav": ["-acodec", "pcm_s16le"],
             ".mp3": ["-acodec", "libmp3lame", "-b:a", "192k"],
-            ".ogg": ["-acodec", "libvorbis", "-q:a", "6"],
+            ".ogg": vorbis_args(6),
             ".m4a": ["-acodec", "aac", "-b:a", "192k"],
             ".flac": ["-acodec", "flac"],
         }.get(ext, [])

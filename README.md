@@ -29,7 +29,7 @@ indieward --help
 From source:
 
 ```
-git clone https://github.com/indieward/indieward && cd indieward
+git clone https://github.com/JEBANERD/indieward && cd indieward
 pip install -e ".[mcp,dev]"
 ```
 
@@ -63,11 +63,11 @@ Back up the `.indieward/` folder privately. It holds your keys and trap records;
 ## The Claude plugin
 
 ```
-/plugin marketplace add indieward/indieward
+/plugin marketplace add JEBANERD/indieward
 /plugin install indieward@indieward
 ```
 
-In Cowork: Customize → Plugins → Add marketplace → `indieward/indieward`. Then open your game folder and say "protect my game". See [plugin/README.md](plugin/README.md).
+In Cowork: Customize → Plugins → Add marketplace → `JEBANERD/indieward`. Then open your game folder and say "protect my game". See [plugin/README.md](plugin/README.md).
 
 ## Tests (the end-to-end demo)
 

@@ -15,8 +15,8 @@ Guided protection for indie games, on top of the open-source IndieWard engine.
    pipx install "indieward[mcp]"
    ```
 2. Add the plugin:
-   - Claude Code: `/plugin marketplace add indieward/indieward`, then `/plugin install indieward@indieward`
-   - Cowork: Customize → Plugins → Add marketplace → `indieward/indieward`, then install **indieward**
+   - Claude Code: `/plugin marketplace add JEBANERD/indieward`, then `/plugin install indieward@indieward`
+   - Cowork: Customize → Plugins → Add marketplace → `JEBANERD/indieward`, then install **indieward**
 3. Open your game folder and say "protect my game".
 
 ## Contents

@@ -32,8 +32,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-m 'not engine and not live'"
+addopts = "-m 'not engine and not live and not slow'"
 markers = [
   "engine: needs a game engine or build tool on PATH (engines workflow)",
   "live: talks to real outside services (live workflow; set INDIEWARD_LIVE=1)",
+  "slow: benchmarks, run by hand with -m slow",
 ]

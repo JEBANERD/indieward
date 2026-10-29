@@ -164,10 +164,7 @@ def _collect_page(s: Suspect, url, page_file):
 def _image_category(reg_rows, reg_fps, sus_imgs, sus_fps):
     if not reg_rows or not sus_imgs:
         return 0, [], {}
-    sim = np.zeros((len(reg_rows), len(sus_imgs)))
-    for i, fa in enumerate(reg_fps):
-        for j, fb in enumerate(sus_fps):
-            sim[i, j] = fp_image.similarity(fa, fb)
+    sim = fp_image.similarity_matrix(reg_fps, sus_fps)
     best_o = sim.max(axis=1)
     best_s = sim.max(axis=0)
     matched = int((best_o >= 0.5).sum())
@@ -301,8 +298,9 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
     if img_rows and sus.images:
         rfps = [registry.load_fp(vault, r) for r in img_rows]
         cand = []
-        for j, fb in enumerate(sus_fps):
-            sims = [fp_image.similarity(fa, fb) for fa in rfps]
+        sim_all = fp_image.similarity_matrix(rfps, sus_fps)
+        for j in range(len(sus_fps)):
+            sims = sim_all[:, j]
             for i in np.argsort(sims)[::-1][:2]:
                 if sims[i] >= 0.3:
                     cand.append((sims[i], j, i))

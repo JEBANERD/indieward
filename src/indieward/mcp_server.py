@@ -39,6 +39,15 @@ def _safe(fn):
 
 @mcp.tool()
 @_safe
+def doctor(project_dir: str = ".") -> dict:
+    """Check ffmpeg, openssl (with `ts`), ots, the mcp package and vault write access. Returns fix commands only; installs nothing."""
+    from . import doctor as _doctor
+
+    return _doctor.run_doctor(project_dir)
+
+
+@mcp.tool()
+@_safe
 def project_status(project_dir: str) -> dict:
     """Vault status: verification code and state, counts, pending timestamps, copyright-window deadline, takedowns."""
     return cli.status(find_vault(project_dir))

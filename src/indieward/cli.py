@@ -156,6 +156,8 @@ def main(argv=None) -> int:
     a = sub.add_parser("signals", help="print AI-use reservation files (signals, not blocks)")
     a.add_argument("which", choices=["robots", "cawg", "tdmrep"])
 
+    sub.add_parser("doctor", help="check ffmpeg, openssl, ots, mcp and vault access; prints fixes only")
+
     sub.add_parser("stores", help="show each store's takedown channel and its official source")
 
     args = ap.parse_args(argv)
@@ -185,6 +187,15 @@ def _run(args) -> int:
     if args.cmd == "signals":
         print({"robots": signals.robots_txt, "cawg": signals.cawg_training_mining, "tdmrep": signals.tdm_rep_header}[args.which]())
         return 0
+    if args.cmd == "doctor":
+        from . import doctor
+
+        rep = doctor.run_doctor(args.project)
+        if j:
+            _out(rep, True)
+        else:
+            print(doctor.format_report(rep))
+        return 0 if rep["ok"] else 1
     if args.cmd == "stores":
         _out(stores.STORES, j)
         return 0

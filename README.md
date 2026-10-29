@@ -21,10 +21,36 @@ Free, open-source anti-clone toolkit for indie game developers. It runs on your 
 
 Needs Python 3.10+ and [FFmpeg](https://ffmpeg.org/download.html) (for audio and video). `openssl` (ships with Git for Windows, macOS, Linux) is used for RFC 3161 timestamps.
 
+**Windows (PowerShell)**
+
 ```
-pipx install "indieward[mcp]"        # or: pip install "indieward[mcp]"
-indieward --help
+winget install Python.Python.3.12        # skip if Python 3.10+ is installed
+winget install Gyan.FFmpeg
+winget install Git.Git                   # includes openssl
+# open a new terminal so PATH refreshes, then:
+py -m pip install --user pipx
+py -m pipx ensurepath                    # open another new terminal afterwards
+pipx install "indieward[mcp]"
+indieward doctor
 ```
+
+**macOS**
+
+```
+brew install python ffmpeg pipx && pipx ensurepath
+pipx install "indieward[mcp]"
+indieward doctor
+```
+
+**Linux (Debian/Ubuntu)**
+
+```
+sudo apt install ffmpeg openssl pipx && pipx ensurepath
+pipx install "indieward[mcp]"
+indieward doctor
+```
+
+`indieward doctor` checks Python, ffmpeg/ffprobe, `openssl ts`, the optional `ots` client and `mcp` package, and write access, then prints one fix command per problem. It never installs anything itself. Plain `pip install "indieward[mcp]"` also works.
 
 From source:
 

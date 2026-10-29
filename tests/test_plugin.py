@@ -75,6 +75,64 @@ def test_manifests_valid_json():
     for f in (ROOT / ".claude-plugin" / "marketplace.json", ROOT / "plugin" / ".claude-plugin" / "plugin.json",
               ROOT / "plugin" / ".mcp.json", ROOT / "plugin" / "hooks" / "hooks.json"):
         json.loads(f.read_text())
+    hooks = (ROOT / "plugin" / "hooks" / "hooks.json").read_text()
+    assert "indieward-hook protect-vault" in hooks
     for s in (ROOT / "plugin" / "skills").glob("*/SKILL.md"):
         head = s.read_text().split("---")[1]
         assert "name:" in head and "description:" in head
+
+
+@pytest.mark.parametrize("tool,cmd", [
+    ("Bash", "rm -rf .indieward/keys"),
+    ("Bash", "rm .indieward/vault.db"),
+    ("Bash", "rm -rf .indieward"),
+    ("Bash", "git clean -n && rm -rf ./.indieward/"),
+    ("Bash", "cd game/.indieward && rm -rf certs"),
+    ("Bash", "find .indieward/certs -name '*.json' -delete"),
+    ("Bash", "ls .indieward/keys/* | xargs rm"),
+    ("Bash", "mv .indieward/keys /tmp/old"),
+    ("Bash", "echo junk > .indieward/keys/mac.key"),
+    ("Bash", "cp other.db .indieward/vault.db"),
+    ("Bash", "sqlite3 .indieward/vault.db 'DELETE FROM checks'"),
+    ("Bash", "sed -i 's/a/b/' .indieward/certs/cert.json"),
+    ("Bash", "bash -c \"rm -f .indieward/vault.db-wal\""),
+    ("Bash", "python -c \"import shutil; shutil.rmtree('.indieward/keys')\""),
+    ("PowerShell", "del .indieward\\vault.db"),
+    ("PowerShell", "Remove-Item -Recurse -Force .indieward\\keys"),
+    ("PowerShell", "Remove-Item C:\\Games\\Moth\\.indieward -Recurse"),
+    ("PowerShell", "Set-Content -Path .indieward\\certs\\cert.json -Value '{}'"),
+    ("PowerShell", "cmd /c rd /s /q .indieward\\certs"),
+])
+def test_vault_hook_blocks_shell_changes(tool, cmd):
+    code, _, err = _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"command": cmd}})
+    assert code == 2 and "vault" in err
+
+
+@pytest.mark.parametrize("tool,path", [
+    ("Edit", "/home/me/game/.indieward/vault.db"),
+    ("Write", ".indieward/keys/signing.pem"),
+    ("Write", "C:\\Games\\Moth\\.indieward\\certs\\cert_1.json"),
+    ("MultiEdit", "game/.indieward/certs/cert_1.json"),
+])
+def test_vault_hook_blocks_edit_and_write(tool, path):
+    assert _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"file_path": path}})[0] == 2
+
+
+@pytest.mark.parametrize("tool,inp", [
+    ("Bash", {"command": "cat .indieward/certs/cert_1.json"}),
+    ("Bash", {"command": "ls -la .indieward/keys"}),
+    ("Bash", {"command": "sqlite3 .indieward/vault.db 'SELECT * FROM checks'"}),
+    ("Bash", {"command": "cp .indieward/keys/signing.pem ~/backup/"}),
+    ("Bash", {"command": "rm -rf build/ && rm notes.txt"}),
+    ("Bash", {"command": "rm .indieward/packages/old.zip"}),
+    ("Bash", {"command": "indieward register --paths art/"}),
+    ("PowerShell", {"command": "Get-Content .indieward\\certs\\cert_1.json"}),
+    ("PowerShell", {"command": "Remove-Item .\\Temp -Recurse"}),
+    ("Edit", {"file_path": "/home/me/game/src/player.gd"}),
+    ("Write", {"file_path": ".indieward-notes.md"}),
+    ("Write", {"file_path": "docs/keys/readme.md"}),
+    ("Read", {"file_path": ".indieward/vault.db"}),
+    ("mcp__indieward__register_assets", {"project_dir": ".", "paths": [".indieward/keys"]}),
+])
+def test_vault_hook_allows_reads_own_tools_and_other_edits(tool, inp):
+    assert _hook(["protect-vault"], {"tool_name": tool, "tool_input": inp})[0] == 0

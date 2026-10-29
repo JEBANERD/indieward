@@ -24,7 +24,7 @@ Guided protection for indie games, on top of the open-source IndieWard engine.
 - MCP server `indieward-mcp` (local, stdio; no send tool)
 - Skills: `protect-setup`, `add-traps`, `footage-prep`, `check-suspect`, `takedown-package`, `clone-response`
 - Agent: `evidence-reviewer` (skeptical review before any package)
-- Hooks: tries to stop Claude from sending takedown notices or filling store forms for you (best effort; you can turn hooks off); shows vault status at session start
+- Hooks: tries to stop Claude from sending takedown notices or filling store forms for you; tries to stop Claude editing, moving or deleting your vault's keys, `vault.db` and certificates (reading is fine, and IndieWard's own tools still write there); shows vault status at session start. The guardrail hooks are best effort, not a guarantee: they match commands and paths, so a cleverly built command can slip past, and you can turn hooks off. Keep your own backup of `.indieward/keys`.
 
 Skills also work in chat; hooks and the agent run in Claude Code and Cowork.
 

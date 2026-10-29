@@ -57,6 +57,16 @@ jobs:
             --allowedTools "Bash,Read,Edit,Write,Glob,Grep"
             --disallowedTools "Bash(git push:*),Bash(gh pr merge:*),Bash(gh release:*)"
 
+      # The action hides Claude's output; on failure print only the final error fields.
+      - name: Show Claude error
+        if: failure()
+        run: |
+          f="$RUNNER_TEMP/claude-execution-output.json"
+          [ -f "$f" ] || { echo "No execution file at $f"; exit 0; }
+          jq -c 'if type == "array" then . else [.] end
+                 | (map(select(.type == "assistant")) | last | {error: .error, text: [.message.content[]?.text]}),
+                   (map(select(.type == "result")) | last | {result, api_error_status, terminal_reason, errors})' "$f" || true
+
       - name: Open PR or issue
         env:
           GH_TOKEN: ${{ secrets.IW_BOT_TOKEN || github.token }}

@@ -34,7 +34,7 @@ import urllib.request
 from . import util
 from .vault import Vault
 
-UA = "IndieWard/0.1 (+https://github.com/indieward/indieward; ownership check, single request)"
+UA = "IndieWard/0.1 (+https://github.com/JEBANERD/indieward; ownership check, single request)"
 
 
 def http_get(url: str, timeout: float = 20.0) -> tuple[int, bytes]:

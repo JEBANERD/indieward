@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "Protect an indie game from clones: signed timestamped proof of ownership, invisible watermarks, trap markers, plagiarism checks with filing-strength labels, and takedown drafts you send yourself. Runs locally; never sends anything.",
   "author": { "name": "IndieWard contributors" },
-  "homepage": "https://github.com/indieward/indieward",
-  "repository": "https://github.com/indieward/indieward",
+  "homepage": "https://github.com/JEBANERD/indieward",
+  "repository": "https://github.com/JEBANERD/indieward",
   "license": "MIT",
   "keywords": ["game-dev", "copyright", "dmca", "anti-clone", "watermark", "indie"]
 }

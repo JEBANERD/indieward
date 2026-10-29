@@ -20,7 +20,7 @@ except ImportError:
     except ImportError as e:  # pragma: no cover
         raise SystemExit("The MCP server needs the 'mcp' package: pip install 'indieward[mcp]'") from e
 
-from . import certificate, check, cli, package, registry, signals, stores, timestamp, traps, verify, wm_video
+from . import doctor as doctor_mod, certificate, check, cli, package, registry, signals, stores, timestamp, traps, verify, wm_video
 from .vault import Vault, find_vault
 
 mcp = _Server("indieward")
@@ -189,6 +189,13 @@ def log_takedown_sent(project_dir: str, check_id: str, store: str, note: str = "
     v = find_vault(project_dir)
     package.mark_sent(v, check_id, store, note or None)
     return {"logged": True}
+
+
+@mcp.tool()
+@_safe
+def doctor(project_dir: str = ".") -> dict:
+    """Check the local setup (Python, FFmpeg, openssl, optional ots/mcp, vault write access). Read-only; each problem comes with one fix command for the creator to run."""
+    return doctor_mod.run_doctor(project_dir)
 
 
 @mcp.tool()

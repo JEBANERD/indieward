@@ -7,7 +7,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | Id | Card | Phase | Status | Depends | Size |
 | --- | --- | --- | --- | --- | --- |
 | P1-00 | Replace the placeholder repo slug `indieward/indieward` with this repo's | 1 | done | – | S |
-| P1-01 | CI green on Linux, Windows, macOS | 1 | todo | P1-00 | M |
+| P1-01 | CI green on Linux, Windows, macOS | 1 | in-review | P1-00 | M |
 | P1-02 | Live services green (FreeTSA, OpenTimestamps format, Steam/Roblox/itch shapes) | 1 | todo | P1-01 | M |
 | P1-03 | `indieward doctor` + Windows-first install docs | 1 | todo | P1-01 | S |
 | P1-04 | Dogfood on one of Jasper's real games | 1 | needs-jasper | P1-03 | – |

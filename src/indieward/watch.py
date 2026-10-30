@@ -1,7 +1,8 @@
 """Canary monitoring: look for your trap markers and notice in public code, using official APIs only.
 
 Opt-in. Sources:
-- GitHub code search (REST API, authenticated with the creator's own token). Exact-phrase queries.
+- GitHub code search (REST API, authenticated with the creator's own token). It ignores quotes, so hits are
+  kept only when a returned fragment holds the exact string.
 - npm registry search. Matches package names, descriptions and keywords only, not file contents.
 - Software Heritage content lookup by hash. Only hashes of your trap files and hidden asset are sent.
 
@@ -93,17 +94,24 @@ def hash_needles(vault: Vault) -> list[dict]:
 
 
 def _github(needle: dict, token: str) -> tuple[str, list[dict]]:
+    # Code search ignores quotes and punctuation, so a hit only means every word is somewhere in the file.
+    # Ask for the matched fragments and keep only files where the exact string appears.
     q = urllib.parse.quote(f'"{needle["value"]}"')
     st, hdrs, data = http_get_json(f"https://api.github.com/search/code?q={q}&per_page=30", {
-        "Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}", "Accept": "application/vnd.github.text-match+json",
         "X-GitHub-Api-Version": "2022-11-28"})
-    if st in (403, 429):
+    msg = str(data.get("message", "")).lower() if isinstance(data, dict) else ""
+    if st == 429 or (st == 403 and (hdrs.get("x-ratelimit-remaining") == "0" or "rate limit" in msg)):
         return "rate_limited", []
+    if st in (401, 403):
+        return "auth_error", []  # bad or under-scoped GITHUB_TOKEN
     if st != 200 or not isinstance(data, dict):
         return f"http_{st}", []
+    v = needle["value"].lower()
     return "ok", [{"url": i["html_url"], "detail": {"repository": i.get("repository", {}).get("full_name"),
                                                      "path": i.get("path")}}
-                  for i in data.get("items", []) if i.get("html_url")]
+                  for i in data.get("items", []) if i.get("html_url")
+                  and any(v in (m.get("fragment") or "").lower() for m in i.get("text_matches") or [])]
 
 
 def _npm(needle: dict) -> tuple[str, list[dict]]:

@@ -33,8 +33,10 @@ def vault(tmp_path, monkeypatch):
 class FakeAPI:
     """Routes by host to recorded responses; records every request."""
 
-    def __init__(self, github=(200, None), npm=(200, None), swh=(404, None), swh_headers=None):
+    def __init__(self, github=(200, None), npm=(200, None), swh=(404, None), swh_headers=None,
+                 github_fragment=lambda q: q, github_headers=None):
         self.calls = []
+        self.github_fragment, self.github_headers = github_fragment, github_headers or {}
         self.github, self.npm, self.swh = github, npm, swh
         self.swh_headers = swh_headers or {"x-ratelimit-remaining": "119"}
 
@@ -42,7 +44,12 @@ class FakeAPI:
         self.calls.append((url, headers or {}))
         if url.startswith("https://api.github.com/search/code"):
             st, data = self.github
-            return st, {}, data if data is not None else {"total_count": 0, "items": []}
+            if data is None:
+                data = {"total_count": 0, "items": []}
+            elif self.github_fragment is not None:  # the fragment GitHub would return for this query
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["q"][0].strip('"')
+                data = json.loads(json.dumps(data).replace("{needle}", self.github_fragment(q)))
+            return st, self.github_headers, data
         if url.startswith("https://registry.npmjs.org/-/v1/search"):
             st, data = self.npm
             return st, {}, data if data is not None else {"objects": []}
@@ -93,8 +100,9 @@ def test_github_exact_phrase_authenticated_and_paced(vault, monkeypatch):
     assert slept == [watch.PACE["github"]] * (n - 1)
     for url, headers in fake.calls:
         q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["q"][0]
-        assert q.startswith('"') and q.endswith('"')  # exact phrase
+        assert q.startswith('"') and q.endswith('"')
         assert headers["Authorization"] == "Bearer tok123"
+        assert headers["Accept"] == "application/vnd.github.text-match+json"
         assert headers["X-GitHub-Api-Version"] == "2022-11-28"
     sent = " ".join(urllib.parse.unquote(u) for u, _ in fake.calls)
     assert not any(c in sent for c in _core_values(vault))  # core traps stay private by default
@@ -105,6 +113,22 @@ def test_github_exact_phrase_authenticated_and_paced(vault, monkeypatch):
     # second run finds the same files: no duplicate leads
     r2 = watch.run(vault, ["github"], token="tok123", accept_disclosure=True, sleep=lambda s: None)
     assert r2["sources"]["github"]["new_leads"] == 0 and len(watch.leads(vault)) == len(leads)
+
+
+def test_github_keeps_only_files_holding_the_exact_string(vault, monkeypatch):
+    # GitHub ignores the quotes: a file with the same words scattered about still comes back. No lead for it.
+    fake = FakeAPI(github=(200, _fx("github_search_code.json")),
+                   github_fragment=lambda q: " ... ".join(reversed(q.replace("_", " ").split())))
+    monkeypatch.setattr(watch, "http_get_json", fake)
+    r = watch.run(vault, ["github"], token="t", accept_disclosure=True, sleep=lambda s: None)
+    assert r["sources"]["github"]["hits"] == 0 and watch.leads(vault) == []
+
+
+def test_github_bad_token_is_not_a_rate_limit(vault, monkeypatch):
+    fake = FakeAPI(github=(401, {"message": "Bad credentials"}))
+    monkeypatch.setattr(watch, "http_get_json", fake)
+    r = watch.run(vault, ["github"], token="t", accept_disclosure=True, sleep=lambda s: None)
+    assert r["sources"]["github"]["status"] == "auth_error" and len(fake.calls) == 1
 
 
 def test_github_rate_limit_stops_the_source(vault, monkeypatch):

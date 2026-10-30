@@ -177,6 +177,25 @@ def test_image_watermark_survives_screenshot_and_reencode(world, tmp_path):
     assert not cli.detect_file(v, clean)["detected"]
 
 
+def test_image_watermark_screenshot_margin_across_payloads(tmp_path):
+    # Every vault gets random payloads, so detection must not hinge on a lucky one.
+    # moth_1 is the fixture image with the least headroom under the screenshot transform.
+    from indieward import payload, wm_core, wm_image
+    src = tmp_path / "moth_1.png"
+    gf._art(101).save(src)
+    rgb = np.asarray(Image.open(src).convert("RGB"), dtype=np.float64)
+    rng = np.random.default_rng(2026)
+    zs = []
+    for i in range(6):
+        p = payload.make(rng.bytes(32), int(rng.integers(0, 2**payload.ID_BITS)))
+        out, ref = wm_image.embed_array(rgb, p)
+        marked = tmp_path / f"marked_{i}.png"
+        Image.fromarray(out.astype(np.uint8)).save(marked)
+        shot = _screenshot(marked, tmp_path / f"shot_{i}.png")
+        zs.append(wm_image.match_array(np.asarray(Image.open(shot).convert("RGB"), dtype=np.float64), p, ref)["z"])
+    assert min(zs) >= wm_core.DETECT_Z + 1.0, zs
+
+
 def test_audio_watermark_survives_reencode(world, tmp_path):
     v = world["vault"]
     marked = world["orig"] / "indieward_out" / "theme.wav"

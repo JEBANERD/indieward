@@ -50,7 +50,7 @@ def test_csv_semicolon_and_no_trailing_newline(vb, tmp_path):
     v, b = vb
     f = tmp_path / "items.csv"
     before = "ID;Name;Desc\nITEM_SWORD;Sword;A sword\nITEM_SHIELD;Shield;A shield"
-    f.write_text(before)
+    f.write_bytes(before.encode())
     r = inject(v, b, f, apply=True)
     after = _check(v, b, f, before)
     assert ";" in after.splitlines()[-1] and all(k.startswith("ITEM_") and k.isupper() for k in r["keys"])
@@ -60,7 +60,7 @@ def test_json_flat_table(vb, tmp_path):
     v, b = vb
     f = tmp_path / "en.json"
     before = json.dumps({"menu.start": "Start", "menu.quit": "Quit", "menu.options": "Options"}, indent=2) + "\n"
-    f.write_text(before)
+    f.write_bytes(before.encode())
     r = inject(v, b, f, apply=True)
     after = _check(v, b, f, before)
     data = json.loads(after)
@@ -74,7 +74,7 @@ def test_json_nested_picks_biggest_string_table(vb, tmp_path):
     src = {"version": 3, "strings": {"titleScreen": "Title", "pauseMenu": "Paused", "gameOver": "Game over"},
            "meta": {"lang": "en"}}
     before = json.dumps(src, indent=4)
-    f.write_text(before)
+    f.write_bytes(before.encode())
     r = inject(v, b, f, apply=True)
     _check(v, b, f, before)
     data = json.loads(f.read_text())
@@ -88,7 +88,7 @@ def test_json_manifest_rows(vb, tmp_path):
     src = [{"id": "sfx_jump", "path": "audio/jump.ogg", "volume": 0.8, "loop": False},
            {"id": "sfx_coin", "path": "audio/coin.ogg", "volume": 0.6, "loop": False}]
     before = json.dumps(src, indent=2)
-    f.write_text(before)
+    f.write_bytes(before.encode())
     with pytest.raises(InjectError, match="--rows"):  # games often loop over manifests: opt-in only
         inject(v, b, f)
     r = inject(v, b, f, apply=True, rows=True)
@@ -103,15 +103,25 @@ def test_json_manifest_rows(vb, tmp_path):
 def test_json_minified_kept_minified(vb, tmp_path):
     v, b = vb
     f = tmp_path / "min.json"
-    f.write_text('{"a.one":"One","a.two":"Two"}')
+    f.write_bytes('{"a.one":"One","a.two":"Two"}'.encode())
     inject(v, b, f, apply=True)
     assert "\n" not in f.read_text() and traps.verify_build(v, b, f)["ok"]
+
+
+def test_json_with_windows_line_endings(vb, tmp_path):
+    v, b = vb
+    f = tmp_path / "en.json"
+    before = json.dumps({"menu.start": "Start", "menu.quit": "Quit"}, indent=2).replace("\n", "\r\n") + "\r\n"
+    f.write_bytes(before.encode())
+    inject(v, b, f, apply=True)
+    after = _check(v, b, f, before)
+    assert "\n" not in after.replace("\r\n", "") and after.endswith("}\r\n")
 
 
 def test_json_with_unusual_formatting_is_refused(vb, tmp_path):
     v, b = vb
     f = tmp_path / "odd.json"
-    f.write_text('{ "a" : "One",\n      "b":"Two" }\n')
+    f.write_bytes('{ "a" : "One",\n      "b":"Two" }\n'.encode())
     with pytest.raises(InjectError, match="reformatting"):
         inject(v, b, f)
 
@@ -122,7 +132,7 @@ def test_po_key_style_and_context(vb, tmp_path):
     before = ('msgid ""\nmsgstr ""\n"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
               'msgctxt "ui"\nmsgid "menu_start"\nmsgstr "Commencer"\n\n'
               'msgctxt "ui"\nmsgid "menu_quit"\nmsgstr "Quitter"\n')
-    f.write_text(before)
+    f.write_bytes(before.encode())
     r = inject(v, b, f, apply=True)
     after = _check(v, b, f, before)
     assert after.startswith(before) and after.count('msgctxt "ui"') == 5
@@ -133,7 +143,7 @@ def test_po_source_text_style(vb, tmp_path):
     v, b = vb
     f = tmp_path / "de.po"
     before = 'msgid "Start game"\nmsgstr "Spiel starten"\n\nmsgid "Quit"\nmsgstr "Beenden"\n'
-    f.write_text(before)
+    f.write_bytes(before.encode())
     inject(v, b, f, apply=True)
     _check(v, b, f, before)
 
@@ -142,7 +152,7 @@ def test_dry_run_writes_nothing_then_apply_backs_up(vb, tmp_path):
     v, b = vb
     f = tmp_path / "en.json"
     before = json.dumps({"x.a": "A", "x.b": "B"}, indent=2)
-    f.write_text(before)
+    f.write_bytes(before.encode())
     r = inject(v, b, f)
     assert not r["applied"] and r["diff"].count("\n+") >= 3 and f.read_text() == before
     r = inject(v, b, f, apply=True)
@@ -158,7 +168,7 @@ def test_refuses_unverified_vault_and_unknown_types(vb, tmp_path):
     v, b = vb
     raw = Vault.init(tmp_path / "raw", "G", "C")
     f = tmp_path / "en.json"
-    f.write_text('{"a": "A", "b": "B"}')
+    f.write_bytes('{"a": "A", "b": "B"}'.encode())
     with pytest.raises(NotVerified):
         inject(raw, b, f)
     (tmp_path / "x.yaml").write_text("a: b\n")
@@ -170,7 +180,7 @@ def test_cli_shows_diff_and_needs_apply(vb, tmp_path, capsys):
     v, b = vb
     f = tmp_path / "en.json"
     before = json.dumps({"ui.ok": "OK", "ui.cancel": "Cancel"}, indent=2)
-    f.write_text(before)
+    f.write_bytes(before.encode())
     assert cli.main(["-C", str(tmp_path / "vault"), "traps", "inject",
                      "--build", b, "--into", str(f)]) == 0
     out = capsys.readouterr().out

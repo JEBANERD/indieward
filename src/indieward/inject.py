@@ -108,12 +108,14 @@ def _inject_csv(text: str, pairs, path: Path) -> tuple[str, list[str]]:
 
 def _json_dump_variants(obj, text: str):
     """A json.dumps that reproduces the file byte for byte, so re-dumping only adds lines."""
-    tail = "\n" if text.endswith("\n") else ""
+    # JSON strings never hold a raw newline, so the file's line ending (CRLF on Windows) maps back exactly.
+    nl = "\r\n" if "\r\n" in text else "\n"
+    tail = nl if text.endswith("\n") else ""
     layouts = [(i, (",", ": ")) for i in (2, 4, "\t", 1, 3)] + [(None, (",", ":")), (None, (", ", ": "))]
     for ascii_ in (False, True):
         for indent, seps in layouts:
             def dump(o, indent=indent, seps=seps, ascii_=ascii_):
-                return json.dumps(o, indent=indent, separators=seps, ensure_ascii=ascii_) + tail
+                return json.dumps(o, indent=indent, separators=seps, ensure_ascii=ascii_).replace("\n", nl) + tail
             if dump(obj) == text:
                 return dump
     return None

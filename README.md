@@ -91,6 +91,7 @@ indieward register ui --category ui
 indieward register music trailers src dialogue
 indieward cert                          # signed + timestamped certificate (JSON + PDF)
 indieward notice                        # visible copyright line, SPDX headers, metadata, AGENTS.md notice
+indieward watch run                     # opt-in: is your trap file archived publicly? (hash lookup; --sources github,npm to text-search)
 
 indieward traps new --label "v1.0 release" --engine godot --out traps_v1
 #   ...copy the snippet into the project as its comments say, export the build...

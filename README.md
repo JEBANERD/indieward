@@ -106,6 +106,8 @@ indieward takedown sent --check <check_id> --store itch
 
 Back up the `.indieward/` folder privately. It holds your keys and trap records; it's git-ignored automatically, which also means `git clean -x` and `git stash --all` delete it. Use `git clean -fd` instead.
 
+**Upgrading from a version before 2026-10-31:** code fingerprints now use each language's own comment rules, so minified JavaScript is fully read. Fingerprints of JS, TS, C#, Lua and Python files changed. Builds you registered earlier still match, but on fewer tokens. Run `indieward build register` on them again for the strongest code comparison.
+
 ## The Claude plugin
 
 ```

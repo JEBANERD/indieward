@@ -94,6 +94,7 @@ indieward notice                        # visible copyright line, SPDX headers, 
 
 indieward traps new --label "v1.0 release" --engine godot --out traps_v1
 #   ...copy the snippet into the project as its comments say, export the build...
+indieward traps inject --build <build_id> --into strings.json   # optional: hide them in your own localization file (diff; --apply writes)
 indieward build register --build <build_id> path/to/export
 
 # a clone shows up

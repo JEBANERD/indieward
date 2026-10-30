@@ -102,6 +102,9 @@ def main(argv=None) -> int:
     b = ts.add_parser("new"); b.add_argument("--label", required=True); b.add_argument("--engine", default="generic", choices=["godot", "unity", "ue5", "roblox", "web", "generic"]); b.add_argument("--out")
     b = ts.add_parser("verify"); b.add_argument("--build", required=True); b.add_argument("path")
     ts.add_parser("list")
+    b = ts.add_parser("inject", help="add a build's trap strings to your own localization file (shows a diff; --apply writes)")
+    b.add_argument("--build", required=True); b.add_argument("--into", required=True, help=".csv, .json or .po file")
+    b.add_argument("--apply", action="store_true", help="write the change (a backup is made first)")
     ts.add_parser("rotate-core", help="start new core traps (after a package revealed the old ones)")
 
     a = sub.add_parser("build", help="register an exported build (fingerprints + trap check)")
@@ -246,6 +249,17 @@ def _run(args) -> int:
             _out(r, j)
         elif args.action == "verify":
             _out(traps.verify_build(v, args.build, args.path), j)
+        elif args.action == "inject":
+            from . import inject
+
+            r = inject.apply(v, args.build, args.into) if args.apply else inject.plan(v, args.build, args.into)
+            r.pop("_new", None)
+            if j:
+                _out(r, j)
+            else:
+                print(r["diff"])
+                print(r["warning"])
+                print(f"Written; backup at {r['backup']}" if r.get("applied") else "Nothing written. Re-run with --apply to write it.")
         elif args.action == "rotate-core":
             _out({"core_rotation": traps.rotate_core(v),
                   "next": "New builds get new core traps. Old builds keep theirs and still match."}, j)

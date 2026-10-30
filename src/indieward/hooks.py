@@ -11,7 +11,9 @@ moving or deleting the vault's evidence (``.indieward/keys``, ``.indieward/vault
 ``.indieward/certs``, or the whole ``.indieward`` folder) with Edit, Write or a
 shell command. Reading is allowed, and IndieWard's own MCP tools and CLI still
 write there. Also best effort: it matches paths in commands, so a script that
-builds the path itself can slip past it.
+builds the path itself can slip past it. Because .indieward is gitignored, it
+also stops ``git clean -x``/``-X`` and ``git stash --all``/``-a`` when the repo
+holds a vault (dry runs and ``git clean -x -e .indieward`` are fine).
 
 ``indieward-hook session-status`` (SessionStart): if the working folder has
 an IndieWard vault, prints a short status line (verification, pending
@@ -23,7 +25,9 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import sys
+from pathlib import Path
 
 TAKEDOWN = re.compile(r"(?i)(dmca|takedown|copyright infringement|512\(c\)|trademark complaint|_draft\.eml|"
                       r"steamcommunity\.com/dmca|copyright_agent@|trademark_agent@|support@itch\.io)")
@@ -129,6 +133,122 @@ def _touches_vault(cmd: str) -> bool:
     return False
 
 
+# .indieward is gitignored, so commands that remove ignored files take the whole vault without naming it.
+GIT_WIPE_MSG = ("IndieWard: .indieward is gitignored, so `git clean -x`/`-X` and `git stash --all` would remove the "
+                "whole vault (keys, vault.db, certs). Use `git clean -fd`, add `-e .indieward` to `git clean -x`, or "
+                "use `git stash -u`. Back up .indieward first if you really mean to.")
+GIT_GLOBAL_WITH_VALUE = {"-c", "-C", "--git-dir", "--work-tree", "--namespace"}
+VAULT_PATTERN = re.compile(r"^/?(?:\./)?\.indieward/?\*?$")
+
+
+def _git_args(seg: str) -> tuple[str, list[str]] | None:
+    """(subcommand, its args) for a `git ...` segment, skipping git's own options."""
+    try:
+        args = shlex.split(seg, posix=True)
+    except ValueError:
+        args = [a.strip("'\"") for a in seg.split()]
+    if not args or not re.match(r"(?i)^git(?:\.exe)?$", args[0].rsplit("/", 1)[-1].rsplit("\\", 1)[-1]):
+        return None
+    i = 1
+    while i < len(args) and args[i].startswith("-"):
+        i += 2 if args[i] in GIT_GLOBAL_WITH_VALUE else 1
+    return (args[i].lower(), args[i + 1:]) if i < len(args) else None
+
+
+def _git_clean_wipes(args: list[str]) -> bool:
+    flags, excludes, i = set(), [], 0
+    while i < len(args):
+        a = args[i]
+        if a == "--":
+            break
+        if a == "--dry-run":
+            flags.add("n")
+        elif a.startswith("--exclude"):
+            if "=" in a:
+                excludes.append(a.split("=", 1)[1])
+            elif i + 1 < len(args):
+                excludes.append(args[i + 1])
+                i += 1
+        elif a.startswith("-") and not a.startswith("--"):
+            for j, ch in enumerate(a[1:], 1):
+                if ch == "e":  # -e takes a value: the rest of this cluster, or the next argument
+                    if a[j + 1:]:
+                        excludes.append(a[j + 1:])
+                    elif i + 1 < len(args):
+                        excludes.append(args[i + 1])
+                        i += 1
+                    break
+                flags.add(ch)
+        i += 1
+    if "n" in flags or not flags & {"x", "X"}:
+        return False
+    # -x still honours -e, so excluding the vault keeps it; with -X, -e adds an ignore rule and makes it worse.
+    if "X" not in flags and any(VAULT_PATTERN.match(e.replace("\\", "/")) for e in excludes):
+        return False
+    return True
+
+
+def _git_stash_wipes(args: list[str]) -> bool:
+    if args and not args[0].startswith("-"):
+        if args[0].lower() not in ("push", "save"):
+            return False  # list, show, pop, apply, drop...: nothing leaves the working tree
+        args = args[1:]
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--":
+            break
+        if a == "--all":
+            return True
+        if a in ("-m", "--message"):
+            i += 2
+            continue
+        if a.startswith("-") and not a.startswith("--"):
+            cluster = a[1:].split("m", 1)[0]  # -m's value follows it
+            if "a" in cluster:
+                return True
+            if a.endswith("m"):
+                i += 1
+        i += 1
+    return False
+
+
+def _git_wipes_ignored(cmd: str) -> bool:
+    for seg in SEGMENT.split(cmd):
+        parsed = _git_args(WRAPPER.sub("", seg.strip()))
+        if parsed is None:
+            continue
+        sub, args = parsed
+        if (sub == "clean" and _git_clean_wipes(args)) or (sub == "stash" and _git_stash_wipes(args)):
+            return True
+    return False
+
+
+def _vault_in_repo(cwd: str | None) -> bool:
+    """Is there a .indieward folder in the git repo around cwd (looking up to 3 levels down)? Unknown cwd: yes."""
+    if not cwd:
+        return True
+    start = Path(cwd)
+    if not start.is_dir():
+        return True
+    top = next((p for p in (start, *start.parents) if (p / ".git").exists()), start)
+    if any((p / ".indieward").is_dir() for p in (start, *start.parents) if p == top or top in p.parents):
+        return True
+    stack = [(top, 0)]
+    while stack:
+        d, depth = stack.pop()
+        try:
+            subdirs = [e for e in d.iterdir() if e.is_dir() and not e.is_symlink()]
+        except OSError:
+            continue
+        for e in subdirs:
+            if e.name == ".indieward":
+                return True
+            if depth < 3 and e.name not in (".git", "node_modules", "Library", "Intermediate", "DerivedDataCache"):
+                stack.append((e, depth + 1))
+    return False
+
+
 def protect_vault(event: dict) -> tuple[int, str]:
     """Best effort, not a guarantee: a user can always disable the hook."""
     tool = event.get("tool_name", "")
@@ -137,7 +257,11 @@ def protect_vault(event: dict) -> tuple[int, str]:
         path = str(inp.get("file_path") or inp.get("notebook_path") or "")
         return (2, VAULT_MSG) if VAULT_PATH.search(path) else (0, "")
     if tool in SHELL_TOOLS:
-        return (2, VAULT_MSG) if _touches_vault(str(inp.get("command", ""))) else (0, "")
+        cmd = str(inp.get("command", ""))
+        if _touches_vault(cmd):
+            return 2, VAULT_MSG
+        if _git_wipes_ignored(cmd) and _vault_in_repo(event.get("cwd")):
+            return 2, GIT_WIPE_MSG
     return 0, ""
 
 

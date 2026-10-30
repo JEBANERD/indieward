@@ -141,3 +141,62 @@ def test_vault_hook_blocks_edit_and_write(tool, path):
 ])
 def test_vault_hook_allows_reads_own_tools_and_other_edits(tool, inp):
     assert _hook(["protect-vault"], {"tool_name": tool, "tool_input": inp})[0] == 0
+
+
+@pytest.fixture
+def repo_with_vault(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "game" / ".indieward").mkdir(parents=True)
+    return tmp_path
+
+
+@pytest.mark.parametrize("tool,cmd", [
+    ("Bash", "git clean -fdx"),
+    ("Bash", "git clean -xdf"),
+    ("Bash", "git clean -fdX"),
+    ("Bash", "git clean -f -d -x"),
+    ("Bash", "git stash --all"),
+    ("Bash", "git stash push -a"),
+    ("Bash", "git stash save --all 'wip'"),
+    ("Bash", "git -C game clean -fdx"),
+    ("Bash", "npm run build && git clean -fdx"),
+    ("Bash", "git clean -fdX -e .indieward"),  # with -X, -e adds an ignore rule: still wipes the vault
+    ("PowerShell", "git clean -fdx"),
+    ("PowerShell", "git.exe clean -xfd"),
+])
+def test_vault_hook_blocks_git_wiping_ignored_files(repo_with_vault, tool, cmd):
+    code, _, err = _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"command": cmd},
+                                              "cwd": str(repo_with_vault)})
+    assert code == 2 and "gitignored" in err
+
+
+@pytest.mark.parametrize("cmd", [
+    "git clean -fd",
+    "git clean -ndx",
+    "git clean -fdx --dry-run",
+    "git clean -fdx -e .indieward",
+    "git clean -fdx --exclude=.indieward/",
+    "git stash",
+    "git stash -u",
+    "git stash push -m 'fix -a flag'",
+    "git stash list",
+    "git status --ignored",
+    "git log --all",
+])
+def test_vault_hook_allows_safe_git(repo_with_vault, cmd):
+    assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd},
+                                     "cwd": str(repo_with_vault)})[0] == 0
+
+
+def test_vault_hook_git_clean_fine_without_a_vault(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "src").mkdir()
+    assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": "git clean -fdx"},
+                                     "cwd": str(tmp_path)})[0] == 0
+
+
+def test_vault_hook_git_clean_from_subfolder_sees_vault_elsewhere_in_repo(repo_with_vault):
+    sub = repo_with_vault / "tools"
+    sub.mkdir()
+    assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": "git clean -fdx"},
+                                     "cwd": str(sub)})[0] == 2

@@ -90,6 +90,7 @@ indieward register art --category art
 indieward register ui --category ui
 indieward register music trailers src dialogue
 indieward cert                          # signed + timestamped certificate (JSON + PDF)
+indieward notice                        # visible copyright line, SPDX headers, metadata, AGENTS.md notice
 
 indieward traps new --label "v1.0 release" --engine godot --out traps_v1
 #   ...copy the snippet into the project as its comments say, export the build...

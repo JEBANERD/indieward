@@ -179,3 +179,38 @@ def test_vault_hook_blocks_wiping_ignored_files(tool, cmd):
 ])
 def test_vault_hook_allows_safe_git(cmd):
     assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 0
+
+
+@pytest.fixture
+def repo_with_vault(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "game" / ".indieward").mkdir(parents=True)
+    (tmp_path / "tools").mkdir()
+    return tmp_path
+
+
+def _git_hook(cmd, cwd):
+    return _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": str(cwd)})[0]
+
+
+def test_wipe_allowed_in_a_repo_without_a_vault(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "src" / "deep").mkdir(parents=True)
+    assert _git_hook("git clean -fdx", tmp_path) == 0
+    assert _git_hook("git stash --all", tmp_path / "src") == 0
+
+
+def test_wipe_blocked_when_the_repo_holds_a_vault(repo_with_vault):
+    assert _git_hook("git clean -fdx", repo_with_vault) == 2
+    assert _git_hook("git clean -fdx", repo_with_vault / "tools") == 2  # vault elsewhere in the same repo
+    assert _git_hook("git stash -a", repo_with_vault / "game") == 2
+
+
+def test_wipe_blocked_when_the_command_changes_directory(tmp_path):
+    (tmp_path / ".git").mkdir()
+    assert _git_hook("cd ../game && git clean -fdx", tmp_path) == 2
+    assert _git_hook("git -C ../game clean -fdx", tmp_path) == 2
+
+
+def test_wipe_blocked_without_a_usable_cwd(tmp_path):
+    assert _git_hook("git clean -fdx", tmp_path / "missing") == 2

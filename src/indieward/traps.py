@@ -316,7 +316,10 @@ globalThis["{gl}"] = T;  // a visible side effect, so bundlers don't tree-shake 
     files["README_INDIEWARD.txt"] = (
         "Trap markers for this build. Do NOT ship this README. Keep the values secret.\n"
         "These files are inert: read once at startup, never shown, no network, no player data.\n\n"
-        + GUIDE[engine].format(folder=fo, file=fi, cls=cls) + "\n\nAfter exporting, run:\n"
+        + GUIDE[engine].format(folder=fo, file=fi, cls=cls) + "\n\n"
+        "Harder to spot: also hide the traps in one of your own localization or data files (CSV, JSON or PO)\n"
+        f"  indieward traps inject --build {build_id} --into <your file>   (shows a diff; add --apply to write)\n"
+        "\nAfter exporting, run:\n"
         f"  indieward build register --build {build_id} <exported build>\n")
     written = []
     for name, content in files.items():

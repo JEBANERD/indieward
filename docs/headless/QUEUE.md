@@ -16,7 +16,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-03 | Unity IL2CPP via GameCI (needs a Unity licence secret) | 2 | needs-jasper | P1-01 | L |
 | P2-04 | UE5 local trap-check script + guide | 2 | done | P1-01 | S |
 | P2-05 | Optional TrustMark image backend (publicly readable marks) | 2 | needs-jasper | P1-01 | L |
-| P2-06 | Research + prototype AudioSeal / Video Seal backends | 2 | todo | P2-05 | L |
+| P2-06 | Research + prototype AudioSeal / Video Seal backends | 2 | needs-jasper | P2-05 | L |
 | P2-07 | Vectorized image matching (2,000 × 2,000 in under 10 s) | 2 | done | P1-01 | M |
 | P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | done | P2-07 | M |
 | P2-09 | Trap camouflage: inject traps into the creator's own data files, not a separate snippet | 2 | done | P2-01 | M |
@@ -28,6 +28,6 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-05 | IndieWard name + fork policy (trademark the name so unsafe forks can't use it) | 3 | needs-jasper | P1-00 | – |
 | P4-01 | Canary monitoring via official code-search APIs (web and open-source games) | 4 | done | P2-10 | M |
 | P3-01 | Static guide site + Cloudflare Pages deploy workflow | 3 | done | P1-01 | M |
-| P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | todo | P1-03 | S |
+| P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | needs-jasper | P1-03 | S |
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
 | P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |

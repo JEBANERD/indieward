@@ -171,7 +171,9 @@ def _vals(vault, build_id) -> dict:
 
 GUIDE = {
     "godot": "Add {folder}/{file}.gd as an Autoload (Project > Project Settings > Autoload) and keep the {folder}/ "
-             "folder in your export preset's resource filter.",
+             "folder in your export preset's resource filter. In the preset's Scripts tab, set GDScript Export "
+             "Mode to Text or Binary tokens, not Compressed binary tokens (the 4.3+ default), which hides the "
+             "trap strings.",
     "unity": "Put {cls}.cs and link.xml anywhere under Assets/, and the PNG in Assets/Resources/{folder}/. "
              "[Preserve] and link.xml keep IL2CPP from stripping it.",
     "ue5": "Add {cls}.h/.cpp to your game module and call {cls}::Touch() once from your GameInstance::Init(). C++ "

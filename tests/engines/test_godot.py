@@ -37,13 +37,13 @@ export_filter="all_resources"
 include_filter=""
 exclude_filter=""
 export_path="build/game.pck"
-script_export_mode=1
+script_export_mode={mode}
 
 [preset.0.options]
 """
 
 
-def test_traps_survive_godot_export(tmp_path, monkeypatch):
+def _export(tmp_path, monkeypatch, mode: int) -> dict:
     godot = need("godot")
     v = verified_vault(tmp_path / "vault", monkeypatch)
     t = traps.generate(v, "godot test", "godot")
@@ -53,10 +53,21 @@ def test_traps_survive_godot_export(tmp_path, monkeypatch):
     gd = next(proj.rglob("*.gd")).relative_to(proj).as_posix()
     (proj / "project.godot").write_text(PROJECT.format(name="GameData", path=gd))
     (proj / "main.tscn").write_text(MAIN)
-    (proj / "export_presets.cfg").write_text(PRESETS)
+    (proj / "export_presets.cfg").write_text(PRESETS.format(mode=mode))
     (proj / "build").mkdir()
     subprocess.run([godot, "--headless", "--path", str(proj), "--import"], check=False, timeout=600)
     subprocess.run([godot, "--headless", "--path", str(proj), "--export-pack", "Linux", "build/game.pck"],
                    check=True, timeout=600)
-    res = registry.register_build(v, t["build_id"], proj / "build")
+    return registry.register_build(v, t["build_id"], proj / "build")
+
+
+def test_traps_survive_godot_export(tmp_path, monkeypatch):
+    res = _export(tmp_path, monkeypatch, mode=1)
+    assert res["ok"], res
+
+
+@pytest.mark.xfail(strict=False, reason="compressed binary tokens (script_export_mode=2) compress the script, "
+                                        "so the build-tier trap strings may not be readable in the .pck")
+def test_traps_with_compressed_script_tokens(tmp_path, monkeypatch):
+    res = _export(tmp_path, monkeypatch, mode=2)
     assert res["ok"], res

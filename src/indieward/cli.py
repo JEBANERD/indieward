@@ -164,6 +164,13 @@ def main(argv=None) -> int:
 
     sub.add_parser("stores", help="show each store's takedown channel and its official source")
 
+    a = sub.add_parser("watch", help="opt-in: look for your trap markers in public code (GitHub, npm, Software Heritage)")
+    ws = a.add_subparsers(dest="action", required=True)
+    b = ws.add_parser("run"); b.add_argument("--sources", default="swh", help="comma list of github,npm,swh (default: swh)")
+    b.add_argument("--include-core", action="store_true", help="also text-search core traps (shared by every build)")
+    b.add_argument("--accept-disclosure", action="store_true", help="allow GitHub/npm text searches, which reveal the searched strings to them")
+    ws.add_parser("leads")
+
     a = sub.add_parser("notice", help="visible copyright notice: credits line, SPDX headers, metadata, AGENTS.md")
     a.add_argument("--licence", default=None, help="SPDX licence id, e.g. MIT (default: all rights reserved)")
     a.add_argument("--year", type=int, help="copyright year (default: first publication year, else this year)")
@@ -320,6 +327,14 @@ def _run(args) -> int:
     elif args.cmd == "mechanics":
         check.set_setting(v, "mechanics", args.items)
         _out({"mechanics": args.items}, j)
+    elif args.cmd == "watch":
+        from . import watch
+
+        if args.action == "leads":
+            _out(watch.leads(v), j)
+        else:
+            _out(watch.run(v, [x.strip() for x in args.sources.split(",") if x.strip()],
+                           os.environ.get("GITHUB_TOKEN"), args.include_core, args.accept_disclosure), j)
     elif args.cmd == "notice":
         from . import notice
 

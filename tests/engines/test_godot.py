@@ -66,8 +66,11 @@ def test_traps_survive_godot_export(tmp_path, monkeypatch):
     assert res["ok"], res
 
 
-@pytest.mark.xfail(strict=False, reason="compressed binary tokens (script_export_mode=2) compress the script, "
-                                        "so the build-tier trap strings may not be readable in the .pck")
+# Confirmed on Godot 4.3 in the engines workflow: the export succeeds but verify_build reports the traps
+# stripped. raises=AssertionError keeps a broken export from counting as the expected failure.
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason="compressed binary tokens (script_export_mode=2) compress the script, so the trap "
+                          "strings aren't readable in the .pck; the guide tells creators to use Text or Binary tokens")
 def test_traps_with_compressed_script_tokens(tmp_path, monkeypatch):
     res = _export(tmp_path, monkeypatch, mode=2)
     assert res["ok"], res

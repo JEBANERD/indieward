@@ -104,8 +104,8 @@ def main(argv=None) -> int:
     b = ts.add_parser("inject", help="hide this build's traps in one of your own data files (CSV, JSON, PO)")
     b.add_argument("--build", required=True); b.add_argument("--into", required=True, help="your data file")
     b.add_argument("--apply", action="store_true", help="write the change (default: show the diff only)")
-    b.add_argument("--rows", action="store_true", help="allow adding rows to a JSON list (only if the game looks "
-                   "rows up by id and never loops over all of them)")
+    b.add_argument("--rows", action="store_true", help="allow adding rows to a data table (a CSV that isn't a localization "
+                   "table, or a JSON list); only if the game looks rows up by id and never loops over all of them)")
     ts.add_parser("list")
     ts.add_parser("rotate-core", help="start new core traps (after a package revealed the old ones)")
 

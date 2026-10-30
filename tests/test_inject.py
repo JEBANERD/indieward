@@ -37,8 +37,8 @@ def test_csv_rows_match_style(vb, tmp_path):
     f = tmp_path / "strings.csv"
     before = "key,en,fr\r\nmenu.start,Start,Commencer\r\nmenu.quit,Quit,Quitter\r\nhud.score,Score,Score\r\n"
     f.write_bytes(before.encode())
-    r = inject(v, b, f, apply=True)
-    assert "loops over every row" in r["warning"]
+    r = inject(v, b, f, apply=True)  # key + language columns: a localization table, no flag needed
+    assert "warning" not in r
     after = _check(v, b, f, before)
     assert after.startswith(before) and after.count("\r\n") == 7 and "\n\n" not in after
     assert all(k.startswith("menu.") and k == k.lower() for k in r["keys"])
@@ -51,7 +51,11 @@ def test_csv_semicolon_and_no_trailing_newline(vb, tmp_path):
     f = tmp_path / "items.csv"
     before = "ID;Name;Desc\nITEM_SWORD;Sword;A sword\nITEM_SHIELD;Shield;A shield"
     f.write_bytes(before.encode())
-    r = inject(v, b, f, apply=True)
+    with pytest.raises(InjectError, match="--rows"):  # an item table: a game listing its items would show traps
+        inject(v, b, f)
+    assert f.read_bytes() == before.encode()
+    r = inject(v, b, f, apply=True, rows=True)
+    assert "loops over every row" in r["warning"]
     after = _check(v, b, f, before)
     assert ";" in after.splitlines()[-1] and all(k.startswith("ITEM_") and k.isupper() for k in r["keys"])
 
@@ -185,6 +189,16 @@ def test_cli_shows_diff_and_needs_apply(vb, tmp_path, capsys):
                      "--build", b, "--into", str(f)]) == 0
     out = capsys.readouterr().out
     assert out.startswith("---") and "--apply" in out and f.read_text() == before
+
+
+@pytest.mark.parametrize("header,ok", [
+    (["keys", "en", "es"], True), (["key", "en_US", "pt-BR", "zh_Hans"], True), (["\ufeffid", "en"], True),
+    (["ID", "Name", "Desc"], False), (["key", "en", "price"], False), (["en"], False),
+])
+def test_localization_csv_header(header, ok):
+    from indieward.inject import _is_localization_csv
+
+    assert _is_localization_csv(header) is ok
 
 
 @pytest.mark.parametrize("keys,word,expect", [

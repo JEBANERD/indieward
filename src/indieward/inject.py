@@ -4,10 +4,10 @@ A separate file full of nonsense constants is easy for a refactoring tool to
 spot and strip as dead code. The same values as a few extra keys in a real
 localization file, manifest or data table look like everything around them.
 
-Supported: localization/data CSV (one more row per value), JSON (extra keys in
+Supported: localization CSV (one more row per value), JSON (extra keys in
 the busiest string table, or one more object in a list of objects), and
-gettext PO (extra msgid/msgstr entries). Lists of rows need ``rows=True``, because a
-game that loops over every row would show or load the trap. New entries follow the file's own key
+gettext PO (extra msgid/msgstr entries). Any other CSV, and JSON lists of rows,
+need ``rows=True``, because a game that loops over every row would show or load the trap. New entries follow the file's own key
 style (prefix, separator, case) and are only ever added: existing text is never
 rewritten. Nothing is written without ``apply=True``; a backup goes into the
 vault first. Injected keys aren't referenced by game code, so they're never
@@ -83,7 +83,17 @@ def _nl(text: str) -> str:
     return "\r\n" if "\r\n" in text else "\n"
 
 
-def _inject_csv(text: str, pairs, path: Path) -> tuple[str, list[str]]:
+LANG_COL = re.compile(r"^[a-z]{2,3}(?:[_-][A-Za-z0-9]{2,4})?$", re.I)
+KEY_COL = {"key", "keys", "id", "string_id", "stringid", "msgid", "tag", "name"}
+
+
+def _is_localization_csv(header: list[str]) -> bool:
+    """A key column, then only language-code columns (Godot's keys,en,fr layout): looked up by key, never looped."""
+    cols = [c.strip().lstrip(BOM).lower() for c in header]
+    return len(cols) >= 2 and cols[0] in KEY_COL and all(LANG_COL.match(c) for c in cols[1:])
+
+
+def _inject_csv(text: str, pairs, path: Path, allow_rows: bool = False) -> tuple[str, list[str]]:
     sample = text[:20000]
     try:
         dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
@@ -93,6 +103,10 @@ def _inject_csv(text: str, pairs, path: Path) -> tuple[str, list[str]]:
     rows = [r for r in rows if r]
     if len(rows) < 2:
         raise InjectError("the CSV needs a header row and at least one data row to copy its style from")
+    if not allow_rows and not _is_localization_csv(rows[0]):
+        raise InjectError("this CSV doesn't look like a localization table (a key column, then language columns "
+                          "such as en, fr). It may be a data table. " + ROWS_WARNING +
+                          " If the game only looks rows up by key, run again with --rows")
     width = len(rows[0])
     style = _style([r[0] for r in rows[1:]])
     nl = _nl(text)
@@ -251,7 +265,7 @@ def inject(vault: Vault, build_id: str, into, apply: bool = False, rows: bool = 
     if any(p[1] in text for p in pairs):
         raise InjectError("this file already holds this build's trap values")
     if fmt == "csv":
-        new, keys = _inject_csv(text, pairs, path)
+        new, keys = _inject_csv(text, pairs, path, rows)
     elif fmt == "json":
         new, keys = _inject_json(text, pairs, number, rows)
     else:
@@ -263,7 +277,7 @@ def inject(vault: Vault, build_id: str, into, apply: bool = False, rows: bool = 
     diff = "".join(difflib.unified_diff(text.splitlines(True), new.splitlines(True),
                                         fromfile=str(path), tofile=str(path)))
     res = {"file": str(path), "format": fmt, "build_id": build_id, "keys": keys, "diff": diff, "applied": False}
-    if fmt == "csv" or rows:
+    if rows:
         res["warning"] = ROWS_WARNING
     if not apply:
         res["next"] = "Review the diff, then run again with --apply to write it (a backup goes into the vault first)."

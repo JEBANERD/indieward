@@ -18,8 +18,8 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-05 | Optional TrustMark image backend (publicly readable marks) | 2 | needs-jasper | P1-01 | L |
 | P2-06 | Research + prototype AudioSeal / Video Seal backends | 2 | todo | P2-05 | L |
 | P2-07 | Vectorized image matching (2,000 × 2,000 in under 10 s) | 2 | done | P1-01 | M |
-| P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | in-review | P2-07 | M |
-| P2-09 | Trap camouflage: inject traps into the creator's own data files, not a separate snippet | 2 | todo | P2-01 | M |
+| P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | done | P2-07 | M |
+| P2-09 | Trap camouflage: inject traps into the creator's own data files, not a separate snippet | 2 | done | P2-01 | M |
 | P2-10 | `indieward notice`: visible copyright / licence metadata (CMI) + factual AGENTS.md notice | 2 | done | P1-01 | S |
 | P2-11 | Hook: stop AI tools editing or deleting the vault (keys, vault.db, certs) | 2 | done | P1-01 | S |
 | P2-12 | Guide update: code signing, licence choice, CMI, EU decompilation, Third Circuit note | 2 | done | P2-10 | S |
@@ -29,4 +29,4 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-01 | Static guide site + Cloudflare Pages deploy workflow | 3 | done | P1-01 | M |
 | P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | todo | P1-03 | S |
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
-| P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | todo | P3-01 | S |
+| P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |

@@ -78,9 +78,24 @@ SCRIPT_WRITE = re.compile(r"(?i)(unlink|remove|rmtree|rmdir|rename|replace|trunc
                           r"rimraf|fs\.rm)")
 CD_VAULT = re.compile(r"(?i)^(?:cd|pushd|set-location|sl|chdir)\s+['\"]?\S*\.indieward[\\/]*['\"]?$")
 # Once a command has cd'd into .indieward, bare names count too.
+INSIDE_TARGET = re.compile(r"(?i)^(?:\.[\\/])?(?:keys|certs|vault\.db)\b")
 INSIDE_PATH = re.compile(r"(?i)(?:^|[\s'\"\\/])(?:keys|certs|vault\.db)\b|(?:^|\s)(?:\*|\.)(?=$|\s)")
 VAULT_MSG = ("IndieWard: the vault (.indieward keys, vault.db, certs) is your evidence, so Claude doesn't edit, move or "
              "delete it. Use IndieWard's own tools to change it, or do it yourself if you really mean to.")
+
+
+def _copy_destinations(args: list[str]) -> list[str]:
+    """The last argument, plus any -t / --target-directory / -Destination value."""
+    dests = [args[-1].strip("'\"")]
+    for i, a in enumerate(args):
+        low = a.lower()
+        if low in ("-t", "--target-directory", "-destination") and i + 1 < len(args):
+            dests.append(args[i + 1].strip("'\""))
+        elif low.startswith(("--target-directory=", "-destination:")):
+            dests.append(a.split("=", 1)[-1] if "=" in a else a.split(":", 1)[-1])
+        elif low.startswith("-t") and len(a) > 2 and not low.startswith("-t-"):
+            dests.append(a[2:])
+    return dests
 
 
 def _touches_vault(cmd: str) -> bool:
@@ -98,12 +113,16 @@ def _touches_vault(cmd: str) -> bool:
         if CD_VAULT.match(seg):
             inside = True
             continue
+        targets = [m.group(1) for m in REDIRECT.finditer(seg)]
+        if any(VAULT_PATH.search(t) or (inside and INSIDE_TARGET.match(t)) for t in targets):
+            return True
         args = seg.split()
         if not args or not (VAULT_PATH.search(seg) or (inside and INSIDE_PATH.search(" ".join(args[1:])))):
             continue
         if SHELL_MODIFY.search(seg):
             return True
-        if SHELL_COPY.search(seg) and (VAULT_PATH.search(args[-1]) or (inside and INSIDE_PATH.search(args[-1]))):
+        if SHELL_COPY.search(seg) and any(VAULT_PATH.search(d) or (inside and INSIDE_TARGET.match(d))
+                                          for d in _copy_destinations(args)):
             return True
         if re.match(r"(?i)^sqlite3?\b", seg) and SQL_WRITE.search(seg):
             return True

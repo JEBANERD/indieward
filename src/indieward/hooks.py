@@ -10,7 +10,8 @@ account. Unrelated email is left alone.
 moving or deleting the vault's evidence (``.indieward/keys``, ``.indieward/vault.db``,
 ``.indieward/certs``, or the whole ``.indieward`` folder) with Edit, Write or a
 shell command, and from ``git clean -x``/``-X`` or ``git stash --all``, which
-remove gitignored files and so the whole vault. Reading is allowed, and IndieWard's own MCP tools and CLI still
+remove gitignored files and so the whole vault (only where the git repo around
+the working folder holds a vault, or where that can't be told). Reading is allowed, and IndieWard's own MCP tools and CLI still
 write there. Also best effort: it matches paths in commands, so a script that
 builds the path itself can slip past it.
 
@@ -26,6 +27,7 @@ import json
 import re
 import shlex
 import sys
+from pathlib import Path
 
 TAKEDOWN = re.compile(r"(?i)(dmca|takedown|copyright infringement|512\(c\)|trademark complaint|_draft\.eml|"
                       r"steamcommunity\.com/dmca|copyright_agent@|trademark_agent@|support@itch\.io)")
@@ -185,6 +187,35 @@ def _touches_vault(cmd: str) -> bool:
     return False
 
 
+CHANGES_DIR = re.compile(r"(?i)(?:^|[\s;&|(])(?:cd|pushd|set-location|sl|chdir)\b|\bgit(?:\.exe)?\s+(?:\S+\s+)*?-C\b")
+SKIP_DIRS = {".git", "node_modules", "Library", "Intermediate", "DerivedDataCache", "Saved", ".godot"}
+
+
+def _vault_in_repo(cwd) -> bool:
+    """Could a git command run in cwd reach a vault? Looks in the enclosing repo, up to 3 levels down.
+
+    Unknown or missing cwd counts as yes, so the hook only relaxes when it can see there's no vault."""
+    if not cwd or not Path(cwd).is_dir():
+        return True
+    start = Path(cwd).resolve()
+    top = next((p for p in (start, *start.parents) if (p / ".git").exists()), start)
+    if any((p / ".indieward").is_dir() for p in (start, *start.parents) if p == top or top in p.parents):
+        return True
+    stack = [(top, 0)]
+    while stack:
+        d, depth = stack.pop()
+        try:
+            subdirs = [e for e in d.iterdir() if e.is_dir() and not e.is_symlink()]
+        except OSError:
+            return True
+        for e in subdirs:
+            if e.name == ".indieward":
+                return True
+            if depth < 3 and e.name not in SKIP_DIRS:
+                stack.append((e, depth + 1))
+    return False
+
+
 def protect_vault(event: dict) -> tuple[int, str]:
     """Best effort, not a guarantee: a user can always disable the hook."""
     tool = event.get("tool_name", "")
@@ -195,7 +226,10 @@ def protect_vault(event: dict) -> tuple[int, str]:
     if tool in SHELL_TOOLS:
         cmd = str(inp.get("command", ""))
         if any(_wipes_ignored(WRAPPER.sub("", seg.strip())) for seg in SEGMENT.split(cmd)):
-            return 2, GIT_WIPE_MSG
+            # The plugin runs in every repo; don't block routine cleanups where no vault can be hit.
+            # A cd or `git -C` may point at another repo, so then we don't relax.
+            if CHANGES_DIR.search(cmd) or _vault_in_repo(event.get("cwd")):
+                return 2, GIT_WIPE_MSG
         return (2, VAULT_MSG) if _touches_vault(cmd) else (0, "")
     return 0, ""
 

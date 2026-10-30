@@ -40,6 +40,10 @@ Not legal advice. Links go to official sources; check them before you rely on a 
 | Godot | PCK encryption with custom export templates; binary-token GDScript | Low-moderate: the key ships in the binary |
 | Web | Server-authoritative logic; assets behind signed URLs; minify | Low for anything sent to the browser |
 
+9. **Sign your builds.** A code signature shows a build came from you and hasn't changed since you signed it. Use [Authenticode](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/authenticode) on Windows; on macOS, sign and [notarize](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution) with Apple. A cloner can re-sign a copy with their own certificate, so a signature proves which build is yours, not that a copy isn't.
+10. **Keep a visible copyright notice.** Put your copyright line in the credits or about screen, in source file headers and in the build's metadata. `indieward notice` prints all of these for you, plus a short licence notice for AI coding tools. Your name and copyright notice count as copyright management information, and knowingly removing it to enable or hide infringement can be a separate violation ([17 U.S.C. §1202](https://www.copyright.gov/title17/92chap12.html)). IndieWard's checks report when a suspect has your code or art but not your notice.
+11. **If you publish your source, your licence decides what others may do with it.** Open-source licences such as [MIT](https://opensource.org/license/mit) and [GPL-3.0](https://opensource.org/license/gpl-3-0) must allow modification and redistribution ([Open Source Definition](https://opensource.org/osd), point 3), so a modified copy that follows the licence is allowed. Source-available licences restrict that. For example, the [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) forbids changing, disabling or circumventing licence-key checks, so removing one breaches the licence. Licences like that aren't open source and aren't on the [OSI list](https://opensource.org/licenses).
+
 ## When a clone shows up
 
 1. **Capture evidence now.** Save the store URL, take screenshots, and archive the page with the Wayback Machine ([web.archive.org](https://web.archive.org/)). Note the date and time.
@@ -76,6 +80,8 @@ Each store's agent is also listed in the US Copyright Office [DMCA Designated Ag
 - The cloner or the store is outside the US.
 - You're thinking about a lawsuit.
 - Anything in the notice is unclear to you.
+- Your players or the cloner are in the EU. There, a licence or EULA can't take away the right to decompile a program when that's needed to make an independent program work with it, and contract terms that try are void ([Directive 2009/24/EC](https://eur-lex.europa.eu/eli/dir/2009/24/oj), Articles 6 and 8). The same article doesn't allow using what's learned to make a substantially similar program.
+- The rules depend on where you sue. US appeals courts don't always agree. For example, in September 2026 the Third Circuit held that copying a competitor's editorial material to train a non-generative AI search tool was not fair use, and it distinguished generative-AI training cases ([*Thomson Reuters v. Ross Intelligence*, No. 25-2153](https://www2.ca3.uscourts.gov/opinarch/252153p.pdf)). A lawyer can tell you which court's rules apply to you.
 
 Low-cost options: Volunteer Lawyers for the Arts, law school IP clinics (including the USPTO Law School Clinic Certification Program), and the USPTO Pro Bono Program.
 
@@ -86,4 +92,8 @@ Low-cost options: Volunteer Lawyers for the Arts, law school IP clinics (includi
 - Steam: [DMCA policy](https://store.steampowered.com/legal/dmca) · [notice form](https://steamcommunity.com/dmca/create/)
 - itch.io: [Terms](https://itch.io/docs/legal/terms#6-digital-millennium-copyright-act) · [published takedowns](https://itch.io/takedowns)
 - Roblox: [IP guidelines](https://create.roblox.com/docs/production/publishing/ip-guidelines) · [Rights Manager](https://create.roblox.com/docs/production/publishing/rights-manager)
-- Statutes: [17 U.S.C. §102](https://www.law.cornell.edu/uscode/text/17/102) · [§411](https://www.law.cornell.edu/uscode/text/17/411) · [§412](https://www.law.cornell.edu/uscode/text/17/412) · [§512](https://www.law.cornell.edu/uscode/text/17/512)
+- Statutes: [17 U.S.C. §102](https://www.law.cornell.edu/uscode/text/17/102) · [§411](https://www.law.cornell.edu/uscode/text/17/411) · [§412](https://www.law.cornell.edu/uscode/text/17/412) · [§512](https://www.law.cornell.edu/uscode/text/17/512) · [§1202](https://www.copyright.gov/title17/92chap12.html)
+- EU: [Directive 2009/24/EC on the legal protection of computer programs](https://eur-lex.europa.eu/eli/dir/2009/24/oj)
+- Courts: [*Thomson Reuters v. Ross Intelligence*, 3d Cir. No. 25-2153 (2026)](https://www2.ca3.uscourts.gov/opinarch/252153p.pdf)
+- Code signing: [Microsoft Authenticode](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/authenticode) · [Apple notarization](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)
+- Licences: [Open Source Definition](https://opensource.org/osd) · [OSI-approved licences](https://opensource.org/licenses) · [MIT](https://opensource.org/license/mit) · [GPL-3.0](https://opensource.org/license/gpl-3-0) · [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license)

@@ -69,7 +69,7 @@ def test_optional_tools_dont_block(tmp_path, monkeypatch):
     res = doctor.run(tmp_path)
     c = _by_name(res)
     assert res["ok"]
-    assert not c["ots"]["ok"] and "opentimestamps-client" in c["ots"]["fix"]
+    assert not c["ots"]["ok"] and "pipx inject --include-apps indieward opentimestamps-client" in c["ots"]["fix"]
     assert not c["mcp"]["ok"] and "indieward[mcp]" in c["mcp"]["fix"]
     assert "opt  ots" in doctor.format_report(res)
 

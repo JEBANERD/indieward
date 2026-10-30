@@ -67,7 +67,7 @@ indieward doctor
 
 If `indieward` isn't on PyPI yet when you read this, install straight from GitHub instead: `pipx install "indieward[mcp] @ git+https://github.com/JEBANERD/indieward"`.
 
-Optional: `pipx inject indieward opentimestamps-client` adds the official `ots` client, which upgrades your OpenTimestamps proofs once Bitcoin confirms them.
+Optional: `pipx inject --include-apps indieward opentimestamps-client` adds the official `ots` client, which upgrades your OpenTimestamps proofs once Bitcoin confirms them.
 
 ### From source
 

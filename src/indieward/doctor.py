@@ -30,7 +30,7 @@ FIXES = {
                          r"C:\Program Files\Git\mingw64\bin to your PATH",
                 "darwin": "brew install openssl",
                 "linux": "sudo apt install openssl"},
-    "ots": {"any": "pipx inject indieward opentimestamps-client  (or: pip install opentimestamps-client)"},
+    "ots": {"any": "pipx inject --include-apps indieward opentimestamps-client  (or: pip install opentimestamps-client)"},
     "mcp": {"any": "pipx install --force \"indieward[mcp]\"  (or: pip install \"indieward[mcp]\")"},
 }
 

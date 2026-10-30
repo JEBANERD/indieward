@@ -21,7 +21,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | todo | P2-07 | M |
 | P2-09 | Trap camouflage: inject traps into the creator's own data files, not a separate snippet | 2 | todo | P2-01 | M |
 | P2-10 | `indieward notice`: visible copyright / licence metadata (CMI) + factual AGENTS.md notice | 2 | todo | P1-01 | S |
-| P2-11 | Hook: stop AI tools editing or deleting the vault (keys, vault.db, certs) | 2 | todo | P1-01 | S |
+| P2-11 | Hook: stop AI tools editing or deleting the vault (keys, vault.db, certs) | 2 | in-review | P1-01 | S |
 | P2-12 | Guide update: code signing, licence choice, CMI, EU decompilation, Third Circuit note | 2 | todo | P2-10 | S |
 | P3-05 | IndieWard name + fork policy (trademark the name so unsafe forks can't use it) | 3 | needs-jasper | P1-00 | – |
 | P4-01 | Canary monitoring via official code-search APIs (web and open-source games) | 4 | todo | P2-10 | M |

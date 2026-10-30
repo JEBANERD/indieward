@@ -12,7 +12,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P1-03 | `indieward doctor` + Windows-first install docs | 1 | todo | P1-01 | S |
 | P1-04 | Dogfood on one of Jasper's real games | 1 | needs-jasper | P1-03 | – |
 | P2-01 | Godot export: traps survive (engines/godot green) | 2 | todo | P1-01 | M |
-| P2-02 | Rojo .rbxlx and .rbxl: traps survive (engines/rojo green) | 2 | todo | P1-01 | M |
+| P2-02 | Rojo .rbxlx and .rbxl: traps survive (engines/rojo green) | 2 | in-review | P1-01 | M |
 | P2-03 | Unity IL2CPP via GameCI (needs a Unity licence secret) | 2 | needs-jasper | P1-01 | L |
 | P2-04 | UE5 local trap-check script + guide | 2 | todo | P1-01 | S |
 | P2-05 | Optional TrustMark image backend (publicly readable marks) | 2 | todo | P1-01 | L |

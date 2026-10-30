@@ -101,6 +101,11 @@ def main(argv=None) -> int:
     ts = a.add_subparsers(dest="action", required=True)
     b = ts.add_parser("new"); b.add_argument("--label", required=True); b.add_argument("--engine", default="generic", choices=["godot", "unity", "ue5", "roblox", "web", "generic"]); b.add_argument("--out")
     b = ts.add_parser("verify"); b.add_argument("--build", required=True); b.add_argument("path")
+    b = ts.add_parser("inject", help="hide this build's traps in one of your own data files (CSV, JSON, PO)")
+    b.add_argument("--build", required=True); b.add_argument("--into", required=True, help="your data file")
+    b.add_argument("--apply", action="store_true", help="write the change (default: show the diff only)")
+    b.add_argument("--rows", action="store_true", help="allow adding rows to a data table (a CSV that isn't a localization "
+                   "table, or a JSON list); only if the game looks rows up by id and never loops over all of them)")
     ts.add_parser("list")
     ts.add_parser("rotate-core", help="start new core traps (after a package revealed the old ones)")
 
@@ -253,6 +258,20 @@ def _run(args) -> int:
             _out(r, j)
         elif args.action == "verify":
             _out(traps.verify_build(v, args.build, args.path), j)
+        elif args.action == "inject":
+            from .inject import InjectError, inject
+
+            try:
+                r = inject(v, args.build, args.into, args.apply, args.rows)
+            except InjectError as e:
+                raise ValueError(f"{e}. The snippet from `traps new` still works as a fallback.") from e
+            if j:
+                _out(r, j)
+            else:
+                print(r["diff"], end="")
+                if r.get("warning"):
+                    print("Note: " + r["warning"])
+                print(("Written. Backup: " + r["backup"] + "\n" if r["applied"] else "") + r["next"])
         elif args.action == "rotate-core":
             _out({"core_rotation": traps.rotate_core(v),
                   "next": "New builds get new core traps. Old builds keep theirs and still match."}, j)

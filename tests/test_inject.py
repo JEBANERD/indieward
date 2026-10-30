@@ -44,7 +44,7 @@ def _applied(v, b, path):
 def test_csv_appends_rows_in_matching_style(vb, tmp_path):
     v, b = vb
     f = tmp_path / "strings.csv"
-    f.write_text("key,en,fr\nMENU_START,Start,Commencer\nMENU_QUIT,Quit,Quitter\n", encoding="utf-8")
+    f.write_bytes(("key,en,fr\nMENU_START,Start,Commencer\nMENU_QUIT,Quit,Quitter\n").encode("utf-8"))
     out = _applied(v, b, f)
     rows = list(csv.reader(io.StringIO(out)))
     assert rows[:3] == [["key", "en", "fr"], ["MENU_START", "Start", "Commencer"], ["MENU_QUIT", "Quit", "Quitter"]]
@@ -54,10 +54,18 @@ def test_csv_appends_rows_in_matching_style(vb, tmp_path):
     assert {r[1] for r in new} == set(_strings(v, b))
 
 
+def test_crlf_files_keep_crlf(vb, tmp_path):
+    v, b = vb
+    f = tmp_path / "en.json"
+    f.write_bytes(b'{\r\n  "title": "Moth"\r\n}\r\n')
+    out = _applied(v, b, f)
+    assert "\r\n" in out and "\n" not in out.replace("\r\n", "")
+
+
 def test_csv_without_key_column_is_refused(vb, tmp_path):
     v, b = vb
     f = tmp_path / "enemies.csv"
-    f.write_text("hp,speed,sprite\n10,2,bat.png\n", encoding="utf-8")
+    f.write_bytes(("hp,speed,sprite\n10,2,bat.png\n").encode("utf-8"))
     with pytest.raises(inject.InjectError, match="key column"):
         inject.plan(v, b, f)
 
@@ -66,7 +74,7 @@ def test_json_flat_keeps_bytes_and_style(vb, tmp_path):
     v, b = vb
     f = tmp_path / "en.json"
     original = '{\n    "menu.start": "Start",\n    "menu.quit": "Quit"\n}\n'
-    f.write_text(original, encoding="utf-8")
+    f.write_bytes((original).encode("utf-8"))
     out = _applied(v, b, f)
     assert out.startswith('{\n    "menu.start": "Start",\n    "menu.quit": "Quit",\n    "menu.')
     data = json.loads(out)
@@ -91,7 +99,7 @@ def test_json_per_locale_objects_and_one_line(vb, tmp_path):
 def test_json_list_is_refused(vb, tmp_path):
     v, b = vb
     f = tmp_path / "items.json"
-    f.write_text('[{"id": "sword", "dmg": 3}]', encoding="utf-8")
+    f.write_bytes(('[{"id": "sword", "dmg": 3}]').encode("utf-8"))
     with pytest.raises(inject.InjectError, match="list"):
         inject.plan(v, b, f)
 
@@ -100,7 +108,7 @@ def test_po_appends_entries(vb, tmp_path):
     v, b = vb
     f = tmp_path / "fr.po"
     original = 'msgid ""\nmsgstr ""\n"Language: fr\\n"\n\nmsgid "menu_start"\nmsgstr "Commencer"\n'
-    f.write_text(original, encoding="utf-8")
+    f.write_bytes((original).encode("utf-8"))
     out = _applied(v, b, f)
     assert out.startswith(original)
     for value in _strings(v, b):
@@ -113,7 +121,7 @@ def test_injected_file_carries_the_build_traps(vb, tmp_path):
     proj = tmp_path / "export"
     proj.mkdir()
     f = proj / "en.json"
-    f.write_text('{"title": "Moth", "play": "Play"}', encoding="utf-8")
+    f.write_bytes(('{"title": "Moth", "play": "Play"}').encode("utf-8"))
     inject.apply(v, b, f)
     for bak in proj.glob("*.bak"):
         bak.unlink()
@@ -124,7 +132,7 @@ def test_injected_file_carries_the_build_traps(vb, tmp_path):
 def test_twice_is_refused_and_unverified_vault_blocked(vb, tmp_path):
     v, b = vb
     f = tmp_path / "en.json"
-    f.write_text('{"title": "Moth"}', encoding="utf-8")
+    f.write_bytes(('{"title": "Moth"}').encode("utf-8"))
     inject.apply(v, b, f)
     with pytest.raises(inject.InjectError, match="already"):
         inject.plan(v, b, f)
@@ -136,7 +144,7 @@ def test_twice_is_refused_and_unverified_vault_blocked(vb, tmp_path):
 def test_cli_shows_diff_and_needs_apply(vb, tmp_path, capsys):
     v, b = vb
     f = tmp_path / "en.json"
-    f.write_text('{"title": "Moth"}', encoding="utf-8")
+    f.write_bytes(('{"title": "Moth"}').encode("utf-8"))
     assert cli.main(["-C", str(tmp_path / "game"), "traps", "inject", "--build", b, "--into", str(f)]) == 0
     out = capsys.readouterr().out
     assert out.startswith("---") and "Nothing written" in out and json.loads(f.read_text()) == {"title": "Moth"}

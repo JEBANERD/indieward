@@ -8,7 +8,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | --- | --- | --- | --- | --- | --- |
 | P1-00 | Replace the placeholder repo slug `indieward/indieward` with this repo's | 1 | done | – | S |
 | P1-01 | CI green on Linux, Windows, macOS | 1 | done | P1-00 | M |
-| P1-02 | Live services green (FreeTSA, OpenTimestamps format, Steam/Roblox/itch shapes) | 1 | todo | P1-01 | M |
+| P1-02 | Live services green (FreeTSA, OpenTimestamps format, Steam/Roblox/itch shapes) | 1 | done | P1-01 | M |
 | P1-03 | `indieward doctor` + Windows-first install docs | 1 | in-review | P1-01 | S |
 | P1-04 | Dogfood on one of Jasper's real games | 1 | needs-jasper | P1-03 | – |
 | P2-01 | Godot export: traps survive (engines/godot green) | 2 | todo | P1-01 | M |
@@ -21,8 +21,9 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | todo | P2-07 | M |
 | P2-09 | Trap camouflage: inject traps into the creator's own data files, not a separate snippet | 2 | todo | P2-01 | M |
 | P2-10 | `indieward notice`: visible copyright / licence metadata (CMI) + factual AGENTS.md notice | 2 | todo | P1-01 | S |
-| P2-11 | Hook: stop AI tools editing or deleting the vault (keys, vault.db, certs) | 2 | todo | P1-01 | S |
+| P2-11 | Hook: stop AI tools editing or deleting the vault (keys, vault.db, certs) | 2 | done | P1-01 | S |
 | P2-12 | Guide update: code signing, licence choice, CMI, EU decompilation, Third Circuit note | 2 | todo | P2-10 | S |
+| P2-13 | Hook: stop `git clean -x` / `git stash --all` wiping the gitignored vault | 2 | done | P2-11 | S |
 | P3-05 | IndieWard name + fork policy (trademark the name so unsafe forks can't use it) | 3 | needs-jasper | P1-00 | – |
 | P4-01 | Canary monitoring via official code-search APIs (web and open-source games) | 4 | todo | P2-10 | M |
 | P3-01 | Static guide site + Cloudflare Pages deploy workflow | 3 | todo | P1-01 | M |

@@ -58,7 +58,7 @@ indieward package --check <check_id> --url https://clone.itch.io/game   # target
 indieward takedown sent --check <check_id> --store itch
 ```
 
-Back up the `.indieward/` folder privately. It holds your keys and trap records; it's git-ignored automatically.
+Back up the `.indieward/` folder privately. It holds your keys and trap records; it's git-ignored automatically, which also means `git clean -x` and `git stash --all` delete it. Use `git clean -fd` instead.
 
 ## The Claude plugin
 

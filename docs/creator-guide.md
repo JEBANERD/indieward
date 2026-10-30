@@ -73,6 +73,15 @@ Checked on 2026-10-28. Open each official page before you send, because stores c
 
 Each store's agent is also listed in the US Copyright Office [DMCA Designated Agent Directory](https://www.copyright.gov/dmca-directory/).
 
+## Watch for copies (optional)
+
+`indieward watch run` looks for your trap markers in public code and packages, using official APIs only. Hits are saved as leads (`indieward watch leads`) for you to review. Nothing is filed or sent.
+
+- `--sources swh` (the default) asks [Software Heritage](https://archive.softwareheritage.org/api/) whether your exact trap files or hidden asset are archived. It sends only their hashes, so it reveals nothing readable.
+- `--sources github,npm` searches [GitHub code search](https://docs.github.com/en/rest/search/search#search-code) (with your own token in `GITHUB_TOKEN`) and the [npm registry](https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md#get-v1search) for the exact strings. GitHub's search ignores quotes and punctuation, so IndieWard keeps a GitHub result only when the matched text holds your exact string. **This sends each string to GitHub or npm**, so you must add `--accept-disclosure`. By default it searches only this build's markers and your public copyright line. `--include-core` also searches the core markers shared by every build, which finds more copies but tells those companies your long-lived markers. If a package or takedown ever reveals them, rotate with `indieward traps rotate-core`.
+- npm search covers package names, descriptions and keywords, not the code inside packages.
+- Requests are paced to each API's limits. A rate-limit reply stops that source until the next run.
+
 ## When to see a lawyer
 
 - You get a counter-notice.

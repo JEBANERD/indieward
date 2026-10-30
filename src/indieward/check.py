@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from . import fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, payload as pl, registry, traps, util, verify
+from . import fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, notice, payload as pl, registry, traps, util, verify
 from . import wm_audio, wm_image, wm_video
 from .vault import Vault
 
@@ -208,7 +208,8 @@ def run(vault: Vault, paths=None, store_url=None, page_file=None, suspect_name=N
             "weak_only": report["weak_only"], "report_html": str(out / "report.html"),
             "report_json": str(out / "report.json"),
             "categories": {c["key"]: {"score": c["score"], "strength": c["strength"]} for c in report["categories"]},
-            "traps_found": report["traps"]["count"], "watermarks_found": len(report["watermarks"])}
+            "traps_found": report["traps"]["count"], "watermarks_found": len(report["watermarks"]),
+            "notice_removed": bool(report["notice"] and report["notice"]["removed"])}
 
 
 def _thumb(img: Image.Image, path: Path, size=256) -> str:
@@ -408,9 +409,15 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
             c["score"] = max(c["score"], 90)
             c["summary"] += " Your watermark was detected (see Watermarks)."
 
+    # copyright notice (informational; doesn't change any score)
+    has_work = any(c["key"] in ("code", "art") and c["score"] >= 50 for c in cats)
+    hay = "\n".join([sus.page_text, *sus.lines, *sus.code.values()])
+    notice_line = notice.assess(notice.recorded(vault), hay, has_work)
+
     overall, rec, weak_only, message = _overall(cats)
     return {"categories": cats, "traps": {"count": n_traps, "found": trap_ev}, "watermarks": wms,
-            "overall": overall, "recommendation": rec, "weak_only": weak_only, "message": message}
+            "notice": notice_line, "overall": overall, "recommendation": rec, "weak_only": weak_only,
+            "message": message}
 
 
 def _cat(key, score, summary, evidence):
@@ -562,6 +569,8 @@ table{{border-collapse:collapse;width:100%;margin:8px 0;table-layout:auto}}td,th
         parts.append("</table><p><small>z above 6 means the chance of a false detection is about one in a billion per test.</small></p>")
     else:
         parts.append("<p>None detected. Watermarks are easy to strip; this doesn't mean nothing was copied.</p>")
+    if r.get("notice"):
+        parts.append(f"<h2>Copyright notice</h2><p>{e(r['notice']['summary'])}</p>")
     for c in r["categories"]:
         if c["key"] in ("traps",) or not c["evidence"]:
             continue

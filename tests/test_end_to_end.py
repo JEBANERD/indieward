@@ -26,7 +26,7 @@ import pytest
 from PIL import Image
 
 import gamefixture as gf
-from indieward import check, certificate, cli, mediaio, package, registry, timestamp, traps, verify
+from indieward import check, certificate, cli, mediaio, notice, package, registry, timestamp, traps, verify
 from indieward.vault import NotVerified, Vault
 
 ITCH_URL = "https://teststudio.itch.io/lantern-moth"
@@ -68,6 +68,7 @@ def world(tmp_path_factory, local_tsa):
     vres = verify.verify_page(v, "itch", ITCH_URL)
     v.set_first_published("2026-10-01")
     check.set_setting(v, "mechanics", ["lamp", "chain", "bell", "night cycle", "glow"])
+    notice.generate(v)
 
     reg = []
     reg += registry.register_path(v, orig / "art", "art")
@@ -271,6 +272,13 @@ def test_clone_scores_high_and_traps_detected(world):
     assert r["recommendation"] == "file"
     assert not r["weak_only"]
     assert r["watermarks"] == []  # the clone was built from unmarked art and audio
+
+
+def test_notice_removed_reported_for_clone_only(world):
+    clone, unrel = _report(world, "clone"), _report(world, "unrelated")
+    assert clone["notice"]["removed"] is True and world["clone"]["notice_removed"] is True
+    assert "Copyright notice" in Path(world["clone"]["report_html"]).read_text()
+    assert unrel["notice"]["removed"] is False  # no copied code or art, so nothing to report
 
 
 def test_unrelated_scores_low_no_traps(world):

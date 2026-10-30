@@ -158,9 +158,10 @@ def retry_pending(vault: Vault) -> list[dict]:
             res = rfc3161(r["digest"], tsdir / f"{r['digest'][:16]}.tsr")
         else:
             res = opentimestamps(r["digest"], tsdir / f"{r['digest'][:16]}.ots")
+        # an upgraded .ots proof keeps the calendar it came from
         vault.db.execute("UPDATE timestamps SET status=?, service=?, token_path=?, stamped_time=?, error=? WHERE id=?",
-                         (res["status"], res.get("service"), res.get("token"), res.get("time"), res.get("error"),
-                          r["id"]))
+                         (res["status"], res.get("service", r["service"]), res.get("token"), res.get("time"),
+                          res.get("error"), r["id"]))
         done.append({"subject": r["subject"], "kind": r["kind"], **res})
     vault.db.commit()
     return done

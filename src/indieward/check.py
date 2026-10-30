@@ -50,6 +50,7 @@ class Suspect:
         self.lines: list[str] = []
         self.names: list[str] = []
         self.page_text = ""
+        self.notice_text: list[str] = []  # unfiltered text around the creator's name, for the notice check only
         self.sources: list[str] = []
         self._tmp = Path(tempfile.mkdtemp(prefix="iw_suspect_"))
 
@@ -60,13 +61,19 @@ class Suspect:
 _STR_RE = re.compile(rb"[\x20-\x7e]{28,}")
 
 
-def collect(paths, store_url=None, page_file=None, name=None, max_images=1500) -> Suspect:
+def collect(paths, store_url=None, page_file=None, name=None, max_images=1500, notice_holder=None) -> Suspect:
     s = Suspect()
+    holder = (notice_holder or "").strip()
+    holder_re = re.compile(re.escape(holder.encode()), re.I) if holder else None
     for root in paths or []:
         s.sources.append(str(root))
         for disp, data in traps.iter_blobs(root):
             inner = disp.split("!/")[-1]
             k = util.kind_for(inner)
+            if holder_re and k not in ("image", "audio", "video"):
+                # before any filtering: credits/licence files and short lines are exactly where notices live
+                for m in holder_re.finditer(data):
+                    s.notice_text.append(data[max(0, m.start() - 120):m.end() + 120].decode("utf-8", "replace"))
             if k in ("code", "text") and util.is_vendor_path(inner):
                 continue
             if k == "image" and len(s.images) < max_images:
@@ -190,7 +197,8 @@ def run(vault: Vault, paths=None, store_url=None, page_file=None, suspect_name=N
     check_id = "c" + secrets.token_hex(5)
     out = vault.path("checks", check_id)
     (out / "evidence").mkdir(parents=True, exist_ok=True)
-    sus = collect(paths, store_url, page_file, suspect_name)
+    note = notice.recorded(vault)
+    sus = collect(paths, store_url, page_file, suspect_name, notice_holder=note["holder"] if note else None)
     try:
         report = _score(vault, sus, out, mechanics)
     finally:
@@ -411,7 +419,7 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
 
     # copyright notice (informational; doesn't change any score)
     has_work = any(c["key"] in ("code", "art") and c["score"] >= 50 for c in cats)
-    hay = "\n".join([sus.page_text, *sus.lines, *sus.code.values()])
+    hay = "\n".join([sus.page_text, *sus.notice_text])
     notice_line = notice.assess(notice.recorded(vault), hay, has_work)
 
     overall, rec, weak_only, message = _overall(cats)

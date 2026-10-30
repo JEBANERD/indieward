@@ -6,7 +6,7 @@ import unicodedata
 
 import pytest
 
-from indieward import cli, notice
+from indieward import check, cli, notice
 from indieward.vault import Vault
 
 
@@ -90,3 +90,26 @@ def test_assess():
     assert kept["found"] and not kept["removed"]
     unrelated = notice.assess(note, "nothing here", has_work=False)
     assert not unrelated["removed"] and not unrelated["found"]
+
+
+def test_collect_keeps_notices_that_similarity_filtering_drops(tmp_path):
+    kept = tmp_path / "kept"
+    kept.mkdir()
+    (kept / "credits.txt").write_text("© 2026 Test Studio\n", encoding="utf-8")  # vendor-named and under 4 words
+    (kept / "game.pck").write_bytes(b"\x00\x01Copyright 2026 Test Studio\x00\xff" * 2)  # short string in a binary
+    s = check.collect([kept], notice_holder="Test Studio")
+    try:
+        hay = "\n".join(s.notice_text)
+        assert notice.found_in("Test Studio", hay)
+        assert len(s.notice_text) == 3
+    finally:
+        s.cleanup()
+
+    gone = tmp_path / "gone"
+    gone.mkdir()
+    (gone / "main.gd").write_text("func light_lamp():\n    pass\n")
+    s = check.collect([gone], notice_holder="Test Studio")
+    try:
+        assert s.notice_text == [] and not notice.found_in("Test Studio", "\n".join(s.notice_text))
+    finally:
+        s.cleanup()

@@ -19,18 +19,62 @@ Free, open-source anti-clone toolkit for indie game developers. It runs on your 
 
 ## Install
 
-Needs Python 3.10+ and [FFmpeg](https://ffmpeg.org/download.html) (for audio and video). `openssl` (ships with Git for Windows, macOS, Linux) is used for RFC 3161 timestamps.
+Needs Python 3.10+, [FFmpeg](https://ffmpeg.org/download.html) (for audio and video) and `openssl` (for RFC 3161 timestamps). `indieward doctor` checks all of them and prints the command to fix anything missing. It never installs anything itself.
+
+### Windows
+
+In PowerShell or Command Prompt:
 
 ```
-pipx install "indieward[mcp]"        # or: pip install "indieward[mcp]"
-indieward --help
+winget install Python.Python.3.12
+winget install Gyan.FFmpeg
+winget install Git.Git
 ```
 
-From source:
+Open a **new** terminal (so PATH updates), then:
+
+```
+py -m pip install --user pipx
+py -m pipx ensurepath
+```
+
+Open another new terminal, then:
+
+```
+pipx install "indieward[mcp]"
+indieward doctor
+```
+
+Git for Windows ships `openssl.exe`, but its default install usually leaves it off PATH. If `doctor` says so, add `C:\Program Files\Git\mingw64\bin` to your PATH (Start → "Edit the system environment variables" → Environment Variables → Path → New) and open a new terminal.
+
+### macOS
+
+```
+brew install python@3.12 ffmpeg pipx
+pipx ensurepath
+pipx install "indieward[mcp]"
+indieward doctor
+```
+
+### Linux (Debian/Ubuntu)
+
+```
+sudo apt install python3 pipx ffmpeg openssl
+pipx ensurepath
+pipx install "indieward[mcp]"
+indieward doctor
+```
+
+If `indieward` isn't on PyPI yet when you read this, install straight from GitHub instead: `pipx install "indieward[mcp] @ git+https://github.com/JEBANERD/indieward"`.
+
+Optional: `pipx inject --include-apps indieward opentimestamps-client` adds the official `ots` client, which upgrades your OpenTimestamps proofs once Bitcoin confirms them.
+
+### From source
 
 ```
 git clone https://github.com/JEBANERD/indieward && cd indieward
 pip install -e ".[mcp,dev]"
+indieward doctor
 ```
 
 ## Quick start

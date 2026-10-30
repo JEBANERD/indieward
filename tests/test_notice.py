@@ -64,7 +64,7 @@ def test_generate_records_hash_and_cli(tmp_path, capsys):
     out = tmp_path / "AGENTS.md"
     assert cli.main(["-C", str(tmp_path / "game"), "--json", "notice", "--year", "2026", "--agents-md", str(out)]) == 0
     printed = json.loads(capsys.readouterr().out)
-    assert printed["credits"].startswith("Lantern Moth © 2026") and out.read_text() == printed["agents_md"]
+    assert printed["credits"].startswith("Lantern Moth © 2026") and out.read_text(encoding="utf-8") == printed["agents_md"]
     # never overwrites an existing AGENTS.md
     assert cli.main(["-C", str(tmp_path / "game"), "notice", "--agents-md", str(out)]) == 2
 

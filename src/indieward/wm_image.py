@@ -11,7 +11,8 @@ Detection is *informed*: at registration the vault keeps a small reference of
 the original (its 256x256 luminance grid, about 128 KB). When checking a
 suspect, IndieWard aligns the suspect to that reference (undoing resizes and
 small edge crops from screenshots), subtracts it, and correlates what is left
-with the payload pattern. Taking the host image out of the comparison is what
+with the payload pattern, weighting each coefficient by how noisy its
+neighbourhood is (resampling error is uneven across the band). Taking the host image out of the comparison is what
 lets the mark stay faint and still be found after re-encodes.
 
 Limits, stated plainly: heavy crops (more than about 5% a side), rotation,
@@ -167,6 +168,22 @@ def align(y: np.ndarray, ref: np.ndarray) -> tuple[np.ndarray, tuple, float]:
     return canvas, tuple(m), best
 
 
+def _whiten(resid: np.ndarray, size: int = 9) -> np.ndarray:
+    """Weight each in-band residual by 1 / its local noise power.
+
+    After a screenshot, what is left once the reference is subtracted is
+    mostly resampling and misalignment error, and it is very uneven across
+    the band (strong near edges in the host, weak elsewhere). The mark itself
+    is spread evenly, so dividing by the local power (the matched-filter
+    weighting) stops a few noisy coefficients from swamping the score. The
+    weights don't depend on the payload, so the decoy z-score stays valid.
+    """
+    inside = BAND.astype(np.float64)
+    power = uniform_filter(resid * resid, size, mode="constant")
+    power /= np.maximum(uniform_filter(inside, size, mode="constant"), 1e-9)
+    return (resid / np.maximum(power, 1e-12))[BAND]
+
+
 def match_array(rgb: np.ndarray, payload: int, ref: np.ndarray) -> dict:
     """Owner-side informed check of one suspect image against one registered mark."""
     y = luma(rgb)
@@ -177,9 +194,10 @@ def match_array(rgb: np.ndarray, payload: int, ref: np.ndarray) -> dict:
     # Undo brightness/contrast changes before subtracting the reference.
     xs, xr = cs[BAND], cr[BAND]
     gain = float(xs @ xr / (xr @ xr + 1e-9))
-    resid = (xs - gain * xr) / env[BAND]
+    resid = np.zeros_like(cs)
+    resid[BAND] = (xs - gain * xr) / env[BAND]
     lay = wm_core.layout(LABEL, N_FEAT)
-    z = wm_core.zscore(resid, wm_core.signs_for(payload, lay), lay)
+    z = wm_core.zscore(_whiten(resid), wm_core.signs_for(payload, lay), lay)
     return {
         "z": round(float(z), 2),
         "detected": bool(z >= wm_core.DETECT_Z),

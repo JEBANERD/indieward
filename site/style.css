@@ -1,0 +1,80 @@
+/* IndieWard guide site. System fonts only: nothing is fetched from anywhere else. */
+:root {
+  --bg: #fbfaf7;
+  --fg: #1d1c1a;
+  --muted: #5d5a54;
+  --line: #e2ded6;
+  --accent: #8a3b12;
+  --code-bg: #f1eee8;
+  --measure: 46rem;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161514;
+    --fg: #ebe8e2;
+    --muted: #a8a39a;
+    --line: #34312d;
+    --accent: #f0a46c;
+    --code-bg: #24221f;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+header.site, main, footer.site {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+header.site {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: baseline;
+  padding-top: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; font-size: 1.15rem; color: var(--fg); text-decoration: none; }
+nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
+nav a { color: var(--muted); text-decoration: none; }
+nav a:hover, nav a[aria-current="page"] { color: var(--accent); }
+nav a[aria-current="page"] { font-weight: 600; }
+main { padding-top: 1rem; padding-bottom: 2rem; }
+h1, h2, h3 { line-height: 1.25; margin: 1.8em 0 0.5em; }
+h1 { font-size: 1.9rem; margin-top: 0.8em; }
+h2 { font-size: 1.35rem; padding-bottom: 0.25em; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; }
+a { color: var(--accent); text-underline-offset: 0.15em; overflow-wrap: anywhere; }
+p, li { overflow-wrap: break-word; }
+li + li { margin-top: 0.35em; }
+code {
+  font: 0.88em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--code-bg);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+pre {
+  background: var(--code-bg);
+  padding: 0.9rem 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+pre code { background: none; padding: 0; font-size: 0.85em; }
+table { border-collapse: collapse; width: 100%; display: block; overflow-x: auto; margin: 1rem 0; }
+th, td { border: 1px solid var(--line); padding: 0.45rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+blockquote { margin: 1rem 0; padding: 0 1rem; border-left: 3px solid var(--line); color: var(--muted); }
+footer.site {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  padding-bottom: 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

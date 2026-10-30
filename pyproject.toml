@@ -20,7 +20,8 @@ dependencies = [
 [project.optional-dependencies]
 mcp = ["mcp>=1.2"]  # 1.x (FastMCP) and 2.x (MCPServer) both supported
 roblox = ["zstandard>=0.22"]
-dev = ["pytest>=8"]
+site = ["markdown-it-py>=3"]  # guide site builder (site/build.py)
+dev = ["pytest>=8", "markdown-it-py>=3"]
 
 [project.scripts]
 indieward = "indieward.cli:main"
@@ -32,8 +33,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-m 'not engine and not live'"
+addopts = "-m 'not engine and not live and not slow'"
 markers = [
   "engine: needs a game engine or build tool on PATH (engines workflow)",
   "live: talks to real outside services (live workflow; set INDIEWARD_LIVE=1)",
+  "slow: benchmarks, run by hand with -m slow",
 ]

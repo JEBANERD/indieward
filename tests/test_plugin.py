@@ -141,3 +141,41 @@ def test_vault_hook_blocks_edit_and_write(tool, path):
 ])
 def test_vault_hook_allows_reads_own_tools_and_other_edits(tool, inp):
     assert _hook(["protect-vault"], {"tool_name": tool, "tool_input": inp})[0] == 0
+
+
+@pytest.mark.parametrize("tool,cmd", [
+    ("Bash", "git clean -fdx"),
+    ("Bash", "git clean -xdf"),
+    ("Bash", "git clean -fdX"),
+    ("Bash", "git clean -f -d -x"),
+    ("Bash", "git clean -fdX -e .indieward"),
+    ("Bash", "git -C game clean -fdx"),
+    ("Bash", 'git -C "game project" clean -fdx'),
+    ("PowerShell", "git -C 'C:\\My Games\\Moth' stash --all"),
+    ("Bash", "git clean -nfdx --no-dry-run"),
+    ("Bash", "cd game && git clean -fdx"),
+    ("Bash", "git stash --all"),
+    ("Bash", "git stash push -a"),
+    ("PowerShell", "git clean -fdx"),
+])
+def test_vault_hook_blocks_wiping_ignored_files(tool, cmd):
+    code, _, err = _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"command": cmd}})
+    assert code == 2 and "gitignored" in err
+
+
+@pytest.mark.parametrize("cmd", [
+    "git clean -fd",
+    "git clean -ndx",
+    "git clean --dry-run -fdx",
+    "git clean --no-dry-run -nfdx",
+    'git -C "game project" clean -fd',
+    "git clean -fdx -e .indieward",
+    "git clean -fdx --exclude=.indieward/",
+    "git stash",
+    "git stash -u",
+    "git stash push -m 'add all'",
+    "git stash apply",
+    "git status --ignored",
+])
+def test_vault_hook_allows_safe_git(cmd):
+    assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 0

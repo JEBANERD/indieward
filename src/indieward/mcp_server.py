@@ -21,6 +21,7 @@ except ImportError:
         raise SystemExit("The MCP server needs the 'mcp' package: pip install 'indieward[mcp]'") from e
 
 from . import certificate, check, cli, package, registry, signals, stores, timestamp, traps, verify, wm_video
+from . import doctor as _doctor
 from .vault import Vault, find_vault
 
 mcp = _Server("indieward")
@@ -35,6 +36,14 @@ def _safe(fn):
             return {"error": f"{type(e).__name__}: {e}",
                     "trace": traceback.format_exc(limit=2) if not isinstance(e, (PermissionError, ValueError, FileNotFoundError)) else None}
     return wrapper
+
+
+@mcp.tool()
+@_safe
+def doctor(project_dir: str = ".") -> dict:
+    """Check this machine is ready: Python 3.10+, FFmpeg, OpenSSL with `openssl ts`, optional ots client and mcp
+    package, and a writable vault folder. Each problem has one fix command for the user to run; nothing is installed."""
+    return _doctor.run(project_dir)
 
 
 @mcp.tool()

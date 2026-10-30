@@ -46,6 +46,10 @@ def test_opentimestamps_calendar_and_official_client(tmp_path):
     info = subprocess.run([ots, "info", str(out)], capture_output=True, text=True)
     assert info.returncode == 0, info.stderr
     assert DIGEST in info.stdout, info.stdout
+    # A fresh proof can't be complete yet: the calendar answers "pending" and the proof stays pending.
+    up = timestamp._ots_upgrade(out)
+    assert up["status"] == "pending-bitcoin", up
+    assert "Pending confirmation" in up["note"], up
 
 
 def test_steam_store_api_shape():

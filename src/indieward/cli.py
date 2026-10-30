@@ -78,6 +78,7 @@ def main(argv=None) -> int:
     a.add_argument("--email", help="contact email for notices")
     a.add_argument("--passphrase-env", help="env var holding a passphrase to encrypt your signing key")
 
+    sub.add_parser("doctor", help="check this machine is ready (Python, FFmpeg, OpenSSL, ...); prints fixes")
     sub.add_parser("status", help="project, verification, deadlines, takedowns")
 
     a = sub.add_parser("verify", help="prove you control the game's store page")
@@ -158,6 +159,12 @@ def main(argv=None) -> int:
 
     sub.add_parser("stores", help="show each store's takedown channel and its official source")
 
+    a = sub.add_parser("notice", help="visible copyright notice: credits line, SPDX headers, metadata, AGENTS.md")
+    a.add_argument("--licence", default=None, help="SPDX licence id, e.g. MIT (default: all rights reserved)")
+    a.add_argument("--year", type=int, help="copyright year (default: first publication year, else this year)")
+    a.add_argument("--holder", help="copyright holder (default: the vault's creator)")
+    a.add_argument("--agents-md", metavar="PATH", help="also write the AGENTS.md notice to this file")
+
     args = ap.parse_args(argv)
     try:
         return _run(args)
@@ -185,6 +192,12 @@ def _run(args) -> int:
     if args.cmd == "signals":
         print({"robots": signals.robots_txt, "cawg": signals.cawg_training_mining, "tdmrep": signals.tdm_rep_header}[args.which]())
         return 0
+    if args.cmd == "doctor":
+        from . import doctor
+
+        r = doctor.run(args.project)
+        print(json.dumps(r, indent=2)) if j else print(doctor.format_report(r))
+        return 0 if r["ok"] else 1
     if args.cmd == "stores":
         _out(stores.STORES, j)
         return 0
@@ -288,6 +301,19 @@ def _run(args) -> int:
     elif args.cmd == "mechanics":
         check.set_setting(v, "mechanics", args.items)
         _out({"mechanics": args.items}, j)
+    elif args.cmd == "notice":
+        from . import notice
+
+        r = notice.generate(v, args.licence or notice.ALL_RIGHTS, args.year, args.holder)
+        if args.agents_md:
+            dst = Path(args.agents_md)
+            if dst.exists():
+                raise FileExistsError(f"{dst} exists; choose another path or merge the notice by hand")
+            dst.write_text(r["agents_md"], encoding="utf-8")
+            r["agents_md_written"] = str(dst)
+        _out(r, j)
+        if not j:
+            print("\nPaste these where they belong. IndieWard recorded the notice's hash so checks can spot removal.")
     elif args.cmd == "detect":
         _out(detect_file(v, args.file), j)
     return 0

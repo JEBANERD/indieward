@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from . import fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, payload as pl, registry, traps, util, verify
+from . import fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, notice, payload as pl, registry, traps, util, verify
 from . import wm_audio, wm_image, wm_video
 from .vault import Vault
 
@@ -50,6 +50,7 @@ class Suspect:
         self.lines: list[str] = []
         self.names: list[str] = []
         self.page_text = ""
+        self.notice_text: list[str] = []  # unfiltered text around the creator's name, for the notice check only
         self.sources: list[str] = []
         self._tmp = Path(tempfile.mkdtemp(prefix="iw_suspect_"))
 
@@ -60,13 +61,19 @@ class Suspect:
 _STR_RE = re.compile(rb"[\x20-\x7e]{28,}")
 
 
-def collect(paths, store_url=None, page_file=None, name=None, max_images=1500) -> Suspect:
+def collect(paths, store_url=None, page_file=None, name=None, max_images=1500, notice_holder=None) -> Suspect:
     s = Suspect()
+    holder = (notice_holder or "").strip()
+    holder_re = re.compile(re.escape(holder.encode()), re.I) if holder else None
     for root in paths or []:
         s.sources.append(str(root))
         for disp, data in traps.iter_blobs(root):
             inner = disp.split("!/")[-1]
             k = util.kind_for(inner)
+            if holder_re and k not in ("image", "audio", "video"):
+                # before any filtering: credits/licence files and short lines are exactly where notices live
+                for m in holder_re.finditer(data):
+                    s.notice_text.append(data[max(0, m.start() - 120):m.end() + 120].decode("utf-8", "replace"))
             if k in ("code", "text") and util.is_vendor_path(inner):
                 continue
             if k == "image" and len(s.images) < max_images:
@@ -164,10 +171,7 @@ def _collect_page(s: Suspect, url, page_file):
 def _image_category(reg_rows, reg_fps, sus_imgs, sus_fps):
     if not reg_rows or not sus_imgs:
         return 0, [], {}
-    sim = np.zeros((len(reg_rows), len(sus_imgs)))
-    for i, fa in enumerate(reg_fps):
-        for j, fb in enumerate(sus_fps):
-            sim[i, j] = fp_image.similarity(fa, fb)
+    sim = fp_image.similarity_matrix(reg_fps, sus_fps)
     best_o = sim.max(axis=1)
     best_s = sim.max(axis=0)
     matched = int((best_o >= 0.5).sum())
@@ -190,7 +194,8 @@ def run(vault: Vault, paths=None, store_url=None, page_file=None, suspect_name=N
     check_id = "c" + secrets.token_hex(5)
     out = vault.path("checks", check_id)
     (out / "evidence").mkdir(parents=True, exist_ok=True)
-    sus = collect(paths, store_url, page_file, suspect_name)
+    note = notice.recorded(vault)
+    sus = collect(paths, store_url, page_file, suspect_name, notice_holder=note["holder"] if note else None)
     try:
         report = _score(vault, sus, out, mechanics)
     finally:
@@ -208,7 +213,8 @@ def run(vault: Vault, paths=None, store_url=None, page_file=None, suspect_name=N
             "weak_only": report["weak_only"], "report_html": str(out / "report.html"),
             "report_json": str(out / "report.json"),
             "categories": {c["key"]: {"score": c["score"], "strength": c["strength"]} for c in report["categories"]},
-            "traps_found": report["traps"]["count"], "watermarks_found": len(report["watermarks"])}
+            "traps_found": report["traps"]["count"], "watermarks_found": len(report["watermarks"]),
+            "notice_removed": bool(report["notice"] and report["notice"]["removed"])}
 
 
 def _thumb(img: Image.Image, path: Path, size=256) -> str:
@@ -301,8 +307,9 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
     if img_rows and sus.images:
         rfps = [registry.load_fp(vault, r) for r in img_rows]
         cand = []
-        for j, fb in enumerate(sus_fps):
-            sims = [fp_image.similarity(fa, fb) for fa in rfps]
+        sim_all = fp_image.similarity_matrix(rfps, sus_fps)
+        for j in range(len(sus_fps)):
+            sims = sim_all[:, j]
             for i in np.argsort(sims)[::-1][:2]:
                 if sims[i] >= 0.3:
                     cand.append((sims[i], j, i))
@@ -408,9 +415,15 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
             c["score"] = max(c["score"], 90)
             c["summary"] += " Your watermark was detected (see Watermarks)."
 
+    # copyright notice (informational; doesn't change any score)
+    has_work = any(c["key"] in ("code", "art") and c["score"] >= 50 for c in cats)
+    hay = "\n".join([sus.page_text, *sus.notice_text])
+    notice_line = notice.assess(notice.recorded(vault), hay, has_work)
+
     overall, rec, weak_only, message = _overall(cats)
     return {"categories": cats, "traps": {"count": n_traps, "found": trap_ev}, "watermarks": wms,
-            "overall": overall, "recommendation": rec, "weak_only": weak_only, "message": message}
+            "notice": notice_line, "overall": overall, "recommendation": rec, "weak_only": weak_only,
+            "message": message}
 
 
 def _cat(key, score, summary, evidence):
@@ -562,6 +575,8 @@ table{{border-collapse:collapse;width:100%;margin:8px 0;table-layout:auto}}td,th
         parts.append("</table><p><small>z above 6 means the chance of a false detection is about one in a billion per test.</small></p>")
     else:
         parts.append("<p>None detected. Watermarks are easy to strip; this doesn't mean nothing was copied.</p>")
+    if r.get("notice"):
+        parts.append(f"<h2>Copyright notice</h2><p>{e(r['notice']['summary'])}</p>")
     for c in r["categories"]:
         if c["key"] in ("traps",) or not c["evidence"]:
             continue

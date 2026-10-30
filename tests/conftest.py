@@ -43,6 +43,11 @@ ess_cert_id_alg = sha256
                             str(d / "r.tsr")], check=True, capture_output=True)
             return (d / "r.tsr").read_bytes()
         # OpenTimestamps calendar stub: a pending attestation-shaped blob (not a real Bitcoin proof)
-        return b"\xf0\x10" + b"\x00" * 16 + b"\x08\x00\x83\xdf\xe3\x0d\x2e\xf9\x0c\x8e" + b"\x1btest-calendar"
+        # (append 16 bytes, sha256, pending attestation whose payload is varbytes(uri)). The URI isn't on the
+        # official client's calendar whitelist, so `ots upgrade` skips it without touching the network.
+        uri = b"https://calendar.invalid"
+        payload = bytes([len(uri)]) + uri
+        return (b"\xf0\x10" + b"\x00" * 16 + b"\x08\x00\x83\xdf\xe3\x0d\x2e\xf9\x0c\x8e"
+                + bytes([len(payload)]) + payload)
 
     return {"dir": d, "post": post, "cert": d / "tsa.crt"}

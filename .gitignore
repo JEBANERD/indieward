@@ -7,3 +7,4 @@ dist/
 indieward_out/
 .headless/
 node_modules/
+site/dist/

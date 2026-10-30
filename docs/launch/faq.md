@@ -17,7 +17,7 @@ No. They're inert values, each read at most once at startup: never shown, no gam
 No. It's evidence for you to weigh. Mechanics alone aren't protected by copyright, so mechanics-only reports advise against filing. This isn't legal advice.
 
 **Does anything leave my computer?**
-Only a SHA-256 digest for timestamping, one read of the store page you name to prove you control it, and, when you check a suspect, one read of its store page and up to 12 of its images. No account, no telemetry.
+A SHA-256 digest for timestamping; one read of your store page (or one store-API call with your key) to prove you control it; and, when you check a suspect, its store page and up to 12 images. Opt-in `indieward watch` sends file hashes to Software Heritage, or with `--accept-disclosure` your marker strings to GitHub or npm. No account, no telemetry.
 
 **Which engines?**
 Trap snippets for Godot, Unity, UE5, Roblox and web builds, plus a generic option.

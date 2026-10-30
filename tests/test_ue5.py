@@ -49,6 +49,10 @@ def test_ue5_check_script_is_local_and_gated():
     ps = (ROOT / "scripts" / "ue5_check.ps1").read_text()
     for bad in ("Invoke-WebRequest", "Invoke-RestMethod", "WebClient", "Send-MailMessage", "Net.Http", "Start-BitsTransfer"):
         assert bad not in ps
+    # a verified store link is checked before anything is copied in or packaged
+    gate0 = ps.index('"status")')
+    assert "if (-not $st.verified)" in ps
+    assert gate0 < ps.index("Copy-Item") and gate0 < ps.index("& $RunUAT")
     # the only write into the project is the guarded copy
     assert ps.count("Copy-Item") == 1
     gate = ps.index("if (-not $Apply)")

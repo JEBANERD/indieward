@@ -3,6 +3,7 @@
   Package a UE5 Shipping build and confirm IndieWard's trap markers survived.
 
 .DESCRIPTION
+  0. Checks that the vault has a verified store link (`indieward status`) and stops if not.
   1. Checks that the trap files from `indieward traps new --engine ue5` are in your
      game module and that something calls <Class>::Touch().
   2. Runs RunUAT BuildCookRun (Shipping, staged + archived to -ArchiveDir).
@@ -48,7 +49,7 @@ param(
     [string] $IndieWard,
     # Copy the trap .h/.cpp into Source\<Module>\ if they're missing. Off by default.
     [switch] $Apply,
-    # Print what would run, run nothing.
+    # Print what would run. Only reads the vault (to check verification); changes nothing.
     [switch] $PrintOnly,
     # Skip packaging and only register an existing build in -ArchiveDir.
     [switch] $SkipPackage
@@ -86,6 +87,16 @@ if (-not $SkipPackage -and -not ($RunUAT -and (Test-Path -LiteralPath $RunUAT)))
 if ($IndieWard) { $IW = @($IndieWard -split ' ') }
 elseif (Get-Command indieward -ErrorAction SilentlyContinue) { $IW = @("indieward") }
 else { $IW = @("python", "-m", "indieward.cli") }
+
+# --- 0. verified store link ---------------------------------------------------
+# Trapping and packaging need a verified store link, same as the rest of IndieWard. Check it before
+# anything is copied into the project or packaged (local vault read; no network).
+$stRaw = & $IW[0] @(@($IW | Select-Object -Skip 1) + @("--json", "-C", $VaultDir, "status"))
+if ($LASTEXITCODE -ne 0) { Fail "indieward status failed (exit $LASTEXITCODE)." }
+$st = ($stRaw -join "`n") | ConvertFrom-Json
+if (-not $st.verified) {
+    Fail "This vault has no verified store link yet. Run ``indieward status`` and follow its next step, then re-run this script."
+}
 
 Write-Host "Project : $UProject"
 Write-Host "Module  : $Module"

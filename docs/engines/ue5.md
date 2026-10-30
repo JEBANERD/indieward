@@ -52,11 +52,12 @@ From the IndieWard repo, in PowerShell:
 
 What it does:
 
-1. Checks the `.h/.cpp` are in `Source\<Module>\` and that something calls `<Class>::Touch()`. If the files are missing it stops and tells you where they go. Add `-Apply` to let it copy them in. It never edits your GameInstance.
-2. Runs `RunUAT BuildCookRun` (Shipping, Win64, cook, pak, stage, archive) into `<project>\..\<Name>_IndieWard\<build id>\`.
-3. Runs `indieward build register --build <id> <that folder>`, which scans the packaged files and stores the build's fingerprints.
+1. Checks the vault has a verified store link (`indieward status`). If not, it stops before touching your project.
+2. Checks the `.h/.cpp` are in `Source\<Module>\` and that something calls `<Class>::Touch()`. If the files are missing it stops and tells you where they go. Add `-Apply` to let it copy them in. It never edits your GameInstance.
+3. Runs `RunUAT BuildCookRun` (Shipping, Win64, cook, pak, stage, archive) into `<project>\..\<Name>_IndieWard\<build id>\`.
+4. Runs `indieward build register --build <id> <that folder>`, which scans the packaged files and stores the build's fingerprints.
 
-Useful options: `-PrintOnly` (show the commands, run nothing), `-EngineRoot "C:\Program Files\Epic Games\UE_5.4"` (or set `UE_ROOT`), `-Module`, `-ArchiveDir`, `-VaultDir`, `-SkipPackage` (register a build you already packaged into `-ArchiveDir`).
+Useful options: `-PrintOnly` (show the commands; it only reads the vault), `-EngineRoot "C:\Program Files\Epic Games\UE_5.4"` (or set `UE_ROOT`), `-Module`, `-ArchiveDir`, `-VaultDir`, `-SkipPackage` (register a build you already packaged into `-ArchiveDir`).
 
 Unreal writes its usual caches (`Binaries\`, `Intermediate\`, `Saved\`) in the project while packaging, as it does from the editor. Without `-Apply` the script writes nothing to `Source\`, `Content\` or `Config\`.
 

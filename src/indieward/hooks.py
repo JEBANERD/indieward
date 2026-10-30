@@ -9,7 +9,8 @@ account. Unrelated email is left alone.
 ``indieward-hook protect-vault`` (PreToolUse): tries to stop Claude from editing,
 moving or deleting the vault's evidence (``.indieward/keys``, ``.indieward/vault.db``,
 ``.indieward/certs``, or the whole ``.indieward`` folder) with Edit, Write or a
-shell command. Reading is allowed, and IndieWard's own MCP tools and CLI still
+shell command, and from ``git clean -x``/``-X`` or ``git stash --all``, which
+remove gitignored files and so the whole vault. Reading is allowed, and IndieWard's own MCP tools and CLI still
 write there. Also best effort: it matches paths in commands, so a script that
 builds the path itself can slip past it.
 
@@ -82,6 +83,8 @@ INSIDE_TARGET = re.compile(r"(?i)^(?:\.[\\/])?(?:keys|certs|vault\.db)\b")
 INSIDE_PATH = re.compile(r"(?i)(?:^|[\s'\"\\/])(?:keys|certs|vault\.db)\b|(?:^|\s)(?:\*|\.)(?=$|\s)")
 VAULT_MSG = ("IndieWard: the vault (.indieward keys, vault.db, certs) is your evidence, so Claude doesn't edit, move or "
              "delete it. Use IndieWard's own tools to change it, or do it yourself if you really mean to.")
+GIT_WIPE_MSG = ("IndieWard: .indieward/ is gitignored, so `git clean -x`/`-X` or `git stash --all` would remove your vault "
+                "(keys, vault.db, certs). Use `git clean -fd`, add `-e .indieward` to `-x`, or run it yourself.")
 
 
 def _copy_destinations(args: list[str]) -> list[str]:
@@ -96,6 +99,49 @@ def _copy_destinations(args: list[str]) -> list[str]:
         elif low.startswith("-t") and len(a) > 2 and not low.startswith("-t-"):
             dests.append(a[2:])
     return dests
+
+
+def _short_flags(args: list[str]) -> str:
+    return "".join(a[1:] for a in args if a.startswith("-") and not a.startswith("--"))
+
+
+def _wipes_ignored(seg: str) -> bool:
+    """git clean -x/-X and git stash --all remove gitignored files, and .indieward/ is gitignored."""
+    args = seg.split()
+    if not args or args[0].lower() not in ("git", "git.exe"):
+        return False
+    i = 1
+    while i < len(args) and args[i].startswith("-"):  # global options: -C <dir>, -c <key=value>
+        i += 2 if args[i] in ("-C", "-c") else 1
+    if i >= len(args):
+        return False
+    sub, rest = args[i], args[i + 1:]
+    if sub == "clean":
+        opts, excludes, j = [], [], 0
+        while j < len(rest):
+            a = rest[j]
+            if a in ("-e", "--exclude") and j + 1 < len(rest):
+                excludes.append(rest[j + 1])
+                j += 1
+            elif a.startswith("--exclude="):
+                excludes.append(a.split("=", 1)[1])
+            elif a.startswith("-e") and not a.startswith("--"):
+                excludes.append(a[2:])
+            elif a.startswith("-"):
+                opts.append(a)
+            j += 1
+        flags = _short_flags(opts)
+        if "n" in flags or "--dry-run" in opts:
+            return False
+        if "X" in flags:
+            return True  # -e only adds ignore rules here, so it can't protect the vault
+        return "x" in flags and not any(re.fullmatch(r"(?:\./|/)?\.indieward[\\/]?\*?", e.strip("'\"")) for e in excludes)
+    if sub == "stash":
+        if rest and not rest[0].startswith("-") and rest[0] not in ("push", "save"):
+            return False  # list, show, apply, pop, drop, ...
+        opts = [a for a in rest if a.startswith("-") and a not in ("-m", "--message")]
+        return "--all" in opts or "a" in _short_flags(opts)
+    return False
 
 
 def _touches_vault(cmd: str) -> bool:
@@ -137,7 +183,10 @@ def protect_vault(event: dict) -> tuple[int, str]:
         path = str(inp.get("file_path") or inp.get("notebook_path") or "")
         return (2, VAULT_MSG) if VAULT_PATH.search(path) else (0, "")
     if tool in SHELL_TOOLS:
-        return (2, VAULT_MSG) if _touches_vault(str(inp.get("command", ""))) else (0, "")
+        cmd = str(inp.get("command", ""))
+        if any(_wipes_ignored(WRAPPER.sub("", seg.strip())) for seg in SEGMENT.split(cmd)):
+            return 2, GIT_WIPE_MSG
+        return (2, VAULT_MSG) if _touches_vault(cmd) else (0, "")
     return 0, ""
 
 

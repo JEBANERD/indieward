@@ -18,7 +18,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-05 | Optional TrustMark image backend (publicly readable marks) | 2 | todo | P1-01 | L |
 | P2-06 | Research + prototype AudioSeal / Video Seal backends | 2 | todo | P2-05 | L |
 | P2-07 | Vectorized image matching (2,000 × 2,000 in under 10 s) | 2 | in-review | P1-01 | M |
-| P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | todo | P2-07 | M |
+| P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | in-review | P2-07 | M |
 | P2-09 | Trap camouflage: inject traps into the creator's own data files, not a separate snippet | 2 | todo | P2-01 | M |
 | P2-10 | `indieward notice`: visible copyright / licence metadata (CMI) + factual AGENTS.md notice | 2 | todo | P1-01 | S |
 | P2-11 | Hook: stop AI tools editing or deleting the vault (keys, vault.db, certs) | 2 | todo | P1-01 | S |

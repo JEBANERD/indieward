@@ -141,3 +141,76 @@ def test_vault_hook_blocks_edit_and_write(tool, path):
 ])
 def test_vault_hook_allows_reads_own_tools_and_other_edits(tool, inp):
     assert _hook(["protect-vault"], {"tool_name": tool, "tool_input": inp})[0] == 0
+
+
+@pytest.mark.parametrize("tool,cmd", [
+    ("Bash", "git clean -fdx"),
+    ("Bash", "git clean -xdf"),
+    ("Bash", "git clean -fdX"),
+    ("Bash", "git clean -f -d -x"),
+    ("Bash", "git clean -fdX -e .indieward"),
+    ("Bash", "git -C game clean -fdx"),
+    ("Bash", 'git -C "game project" clean -fdx'),
+    ("PowerShell", "git -C 'C:\\My Games\\Moth' stash --all"),
+    ("Bash", "git clean -nfdx --no-dry-run"),
+    ("Bash", "cd game && git clean -fdx"),
+    ("Bash", "git stash --all"),
+    ("Bash", "git stash push -a"),
+    ("PowerShell", "git clean -fdx"),
+])
+def test_vault_hook_blocks_wiping_ignored_files(tool, cmd):
+    code, _, err = _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"command": cmd}})
+    assert code == 2 and "gitignored" in err
+
+
+@pytest.mark.parametrize("cmd", [
+    "git clean -fd",
+    "git clean -ndx",
+    "git clean --dry-run -fdx",
+    "git clean --no-dry-run -nfdx",
+    'git -C "game project" clean -fd',
+    "git clean -fdx -e .indieward",
+    "git clean -fdx --exclude=.indieward/",
+    "git stash",
+    "git stash -u",
+    "git stash push -m 'add all'",
+    "git stash apply",
+    "git status --ignored",
+])
+def test_vault_hook_allows_safe_git(cmd):
+    assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 0
+
+
+@pytest.fixture
+def repo_with_vault(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "game" / ".indieward").mkdir(parents=True)
+    (tmp_path / "tools").mkdir()
+    return tmp_path
+
+
+def _git_hook(cmd, cwd):
+    return _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": str(cwd)})[0]
+
+
+def test_wipe_allowed_in_a_repo_without_a_vault(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "src" / "deep").mkdir(parents=True)
+    assert _git_hook("git clean -fdx", tmp_path) == 0
+    assert _git_hook("git stash --all", tmp_path / "src") == 0
+
+
+def test_wipe_blocked_when_the_repo_holds_a_vault(repo_with_vault):
+    assert _git_hook("git clean -fdx", repo_with_vault) == 2
+    assert _git_hook("git clean -fdx", repo_with_vault / "tools") == 2  # vault elsewhere in the same repo
+    assert _git_hook("git stash -a", repo_with_vault / "game") == 2
+
+
+def test_wipe_blocked_when_the_command_changes_directory(tmp_path):
+    (tmp_path / ".git").mkdir()
+    assert _git_hook("cd ../game && git clean -fdx", tmp_path) == 2
+    assert _git_hook("git -C ../game clean -fdx", tmp_path) == 2
+
+
+def test_wipe_blocked_without_a_usable_cwd(tmp_path):
+    assert _git_hook("git clean -fdx", tmp_path / "missing") == 2

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import sys
 
 TAKEDOWN = re.compile(r"(?i)(dmca|takedown|copyright infringement|512\(c\)|trademark complaint|_draft\.eml|"
@@ -107,7 +108,10 @@ def _short_flags(args: list[str]) -> str:
 
 def _wipes_ignored(seg: str) -> bool:
     """git clean -x/-X and git stash --all remove gitignored files, and .indieward/ is gitignored."""
-    args = seg.split()
+    try:
+        args = shlex.split(seg)  # keep quoted paths with spaces whole: git -C "my game" clean -fdx
+    except ValueError:
+        args = seg.split()
     if not args or args[0].lower() not in ("git", "git.exe"):
         return False
     i = 1
@@ -130,9 +134,15 @@ def _wipes_ignored(seg: str) -> bool:
             elif a.startswith("-"):
                 opts.append(a)
             j += 1
-        flags = _short_flags(opts)
-        if "n" in flags or "--dry-run" in opts:
+        dry = False
+        for a in opts:  # last one wins: -n --no-dry-run really deletes
+            if a == "--dry-run" or (not a.startswith("--") and "n" in a):
+                dry = True
+            elif a == "--no-dry-run":
+                dry = False
+        if dry:
             return False
+        flags = _short_flags(opts)
         if "X" in flags:
             return True  # -e only adds ignore rules here, so it can't protect the vault
         return "x" in flags and not any(re.fullmatch(r"(?:\./|/)?\.indieward[\\/]?\*?", e.strip("'\"")) for e in excludes)

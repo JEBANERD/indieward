@@ -293,6 +293,12 @@ def test_clone_scores_high_and_traps_detected(world):
     assert r["watermarks"] == []  # the clone was built from unmarked art and audio
 
 
+def test_report_lists_common_exclusions(world):
+    r = _report(world, "clone")
+    assert r["common"]["libraries_bundled"] == []  # the fixture games bundle no known library
+    assert set(r["common"]) == {"libraries_bundled", "code_excluded", "lines_excluded"}
+
+
 def test_notice_removed_reported_for_clone_only(world):
     clone, unrel = _report(world, "clone"), _report(world, "unrelated")
     assert clone["notice"]["removed"] is True and world["clone"]["notice_removed"] is True

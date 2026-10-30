@@ -31,6 +31,9 @@ indieward-hook = "indieward.hooks:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+indieward = ["data/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-m 'not engine and not live and not slow'"

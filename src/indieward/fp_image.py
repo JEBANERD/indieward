@@ -110,3 +110,52 @@ def similarity(fa: dict, fb: dict) -> float:
     c_cos = np.clip((cos - 0.55) / 0.35, 0, 1)
     # Both views must agree: hashes alone collide on simple images, cosine alone on similar layouts.
     return float(np.sqrt(c_hash * c_cos))
+
+
+_HASH_KEYS = ("ph", "dh", "eh")
+_POPCOUNT8 = np.array([bin(i).count("1") for i in range(256)], dtype=np.uint8)
+
+
+def _pack(fps: list[dict], keys) -> np.ndarray:
+    """(n, len(keys)) uint64 matrix of 64-bit hashes."""
+    return np.array([[int(fp[k], 16) for k in keys] for fp in fps], dtype=np.uint64).reshape(len(fps), len(keys))
+
+
+def _min_distance(ha: np.ndarray, hb: np.ndarray) -> np.ndarray:
+    """(na, nb) smallest Hamming distance between ha[:, k] and hb[:, k] or hb[:, k + 3] (mirror) over the 3 hashes."""
+    out = np.empty((len(ha), len(hb)), dtype=np.uint8)
+    step = max(1, 2_000_000 // max(1, len(hb) * hb.shape[1]))  # bounds the temporary popcount array
+    for s in range(0, len(ha), step):
+        a = ha[s:s + step]
+        best = np.full((len(a), len(hb)), 64, dtype=np.uint8)
+        for k in range(len(_HASH_KEYS)):
+            for col in (k, k + len(_HASH_KEYS)):
+                x = a[:, k][:, None] ^ hb[:, col][None, :]
+                d = _POPCOUNT8[x.view(np.uint8)].reshape(*x.shape, 8).sum(axis=2, dtype=np.uint8)
+                np.minimum(best, d, out=best)
+        out[s:s + step] = best
+    return out
+
+
+def similarity_matrix(fas: list[dict], fbs: list[dict]) -> np.ndarray:
+    """similarity(fas[i], fbs[j]) for every pair, as an (len(fas), len(fbs)) float64 array."""
+    sim = np.zeros((len(fas), len(fbs)))
+    if not fas or not fbs:
+        return sim
+    da = np.array([fa.get("detail", 1.0) for fa in fas]) >= MIN_DETAIL
+    db = np.array([fb.get("detail", 1.0) for fb in fbs]) >= MIN_DETAIL
+    ia, ib = np.flatnonzero(da), np.flatnonzero(db)
+    if not len(ia) or not len(ib):
+        return sim
+    fa_ok = [fas[i] for i in ia]
+    fb_ok = [fbs[j] for j in ib]
+    ha = _pack(fa_ok, _HASH_KEYS)
+    hb = _pack(fb_ok, _HASH_KEYS + tuple("m_" + k for k in _HASH_KEYS))
+    best_hash = 1.0 - _min_distance(ha, hb) / 64.0
+    ta = np.array([fa["thumb"] for fa in fa_ok], dtype=np.float64)
+    tb = np.array([fb["thumb"] for fb in fb_ok], dtype=np.float64)
+    cos = ta @ tb.T
+    c_hash = np.clip((best_hash - 0.72) / 0.22, 0, 1)
+    c_cos = np.clip((cos - 0.55) / 0.35, 0, 1)
+    sim[np.ix_(ia, ib)] = np.sqrt(c_hash * c_cos)
+    return sim

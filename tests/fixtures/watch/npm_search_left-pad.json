@@ -1,0 +1,63 @@
+{
+ "objects": [
+  {
+   "package": {
+    "name": "pad-left",
+    "version": "2.1.0",
+    "description": "Left pad a string with zeros or a specified string. Fastest implementation.",
+    "keywords": [
+     "align",
+     "fill",
+     "left",
+     "pad",
+     "pad-left",
+     "padded",
+     "padding",
+     "spaces",
+     "string",
+     "zero",
+     "zero-fill",
+     "zeros"
+    ],
+    "links": {
+     "homepage": "https://github.com/jonschlinkert/pad-left",
+     "repository": "git+https://github.com/jonschlinkert/pad-left.git",
+     "bugs": "https://github.com/jonschlinkert/pad-left/issues",
+     "npm": "https://www.npmjs.com/package/pad-left"
+    }
+   },
+   "searchScore": 633.4697
+  },
+  {
+   "package": {
+    "name": "@stdlib/string-left-pad",
+    "version": "0.2.3",
+    "description": "Left pad a string.",
+    "keywords": [
+     "stdlib",
+     "stdstring",
+     "utilities",
+     "utility",
+     "utils",
+     "util",
+     "pad",
+     "string",
+     "str",
+     "padding",
+     "lpad",
+     "left",
+     "cli"
+    ],
+    "links": {
+     "homepage": "https://stdlib.io",
+     "repository": "git://github.com/stdlib-js/string-left-pad.git",
+     "bugs": "https://github.com/stdlib-js/stdlib/issues",
+     "npm": "https://www.npmjs.com/package/@stdlib/string-left-pad"
+    }
+   },
+   "searchScore": 534.7313
+  }
+ ],
+ "total": 58589,
+ "time": "2026-10-30T21:20:30.383Z"
+}

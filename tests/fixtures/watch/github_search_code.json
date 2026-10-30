@@ -1,0 +1,17 @@
+{
+ "_note": "Shape from GitHub's REST docs for GET /search/code (api.github.com is unreachable from the sandbox that wrote this).",
+ "total_count": 1,
+ "incomplete_results": false,
+ "items": [
+  {
+   "name": "data_table.gd",
+   "path": "game/data_table.gd",
+   "sha": "0000000000000000000000000000000000000000",
+   "url": "https://api.github.com/repositories/1/contents/game/data_table.gd",
+   "git_url": "https://api.github.com/repositories/1/git/blobs/0000000000000000000000000000000000000000",
+   "html_url": "https://github.com/cloner/lantern-moths/blob/main/game/data_table.gd",
+   "repository": {"id": 1, "full_name": "cloner/lantern-moths", "html_url": "https://github.com/cloner/lantern-moths"},
+   "score": 1.0
+  }
+ ]
+}

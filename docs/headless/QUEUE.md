@@ -29,4 +29,4 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-01 | Static guide site + Cloudflare Pages deploy workflow | 3 | done | P1-01 | M |
 | P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | todo | P1-03 | S |
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
-| P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | todo | P3-01 | S |
+| P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | in-review | P3-01 | S |

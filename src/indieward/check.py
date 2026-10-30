@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from . import fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, payload as pl, registry, traps, util, verify
+from . import common_index, fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, payload as pl, registry, traps, util, verify
 from . import wm_audio, wm_image, wm_video
 from .vault import Vault
 
@@ -251,7 +251,8 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
         if b.get("fp_path"):
             reg_code["fingerprints"].update(json.loads(vault.path(b["fp_path"]).read_text())["code"]["fingerprints"])
     sus_code = fp_code.fingerprint_text_blobs({Path(k.split("!/")[-1]).name: v for k, v in sus.code.items()})
-    cc = fp_code.compare(reg_code, sus_code, common.get("code"))
+    bundled, lib_fps = common_index.detect(sus_code["fingerprints"])  # libraries the suspect ships
+    cc = fp_code.compare(reg_code, sus_code, set(common.get("code", set())) | lib_fps)
     code_ev = []
     src_by_name = {Path(a["name"]).name: a for a in assets if a["kind"] == "code"}
     sus_by_name = {Path(k.split("!/")[-1]).name: v for k, v in sus.code.items()}
@@ -263,7 +264,7 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
     cats.append(_cat("code", cc["score"] if reg_code["fingerprints"] else 0,
                      f"{cc['matched']} shared code fingerprints; {int(cc['coverage_original']*100)}% of your registered "
                      f"code and {int(cc['coverage_suspect']*100)}% of the suspect's code match after renaming is "
-                     f"ignored." + (f" {cc['excluded_common']} common-boilerplate fingerprints excluded." if cc["excluded_common"] else "")
+                     f"ignored." + (f" {cc['excluded_common']} common fingerprints excluded" + (f" (bundled: {', '.join(bundled)})" if bundled else "") + "." if cc["excluded_common"] else "")
                      if reg_code["fingerprints"] and sus.code else "No comparable code (none registered or none found in the suspect).",
                      code_ev))
 
@@ -320,8 +321,10 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
     for b in builds:
         if b.get("fp_path"):
             reg_lines += json.loads(vault.path(b["fp_path"]).read_text())["lines"]
-    common_lines = common.get("lines", set())
-    reg_lines = [x for x in dict.fromkeys(reg_lines) if fp_text.normalize(x) not in common_lines]
+    common_lines = set(common.get("lines", set())) | common_index.licence_lines()
+    all_lines = list(dict.fromkeys(reg_lines))
+    reg_lines = [x for x in all_lines if fp_text.normalize(x) not in common_lines]
+    lines_excluded = len(all_lines) - len(reg_lines)
     sus_lines = list(dict.fromkeys(sus.lines))
     tc = fp_text.compare(reg_lines, sus_lines)
     cats.append(_cat("text", tc["score"] if reg_lines else 0,
@@ -408,6 +411,8 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
 
     overall, rec, weak_only, message = _overall(cats)
     return {"categories": cats, "traps": {"count": n_traps, "found": trap_ev}, "watermarks": wms,
+            "common": {"libraries_bundled": bundled, "code_excluded": cc["excluded_common"],
+                       "lines_excluded": lines_excluded},
             "overall": overall, "recommendation": rec, "weak_only": weak_only, "message": message}
 
 
@@ -539,6 +544,12 @@ table{{border-collapse:collapse;width:100%;margin:8px 0;table-layout:auto}}td,th
                      f"style='background:{badge[c['strength']]}'>{c['strength']}</span><br><small>{e(c['strength_note'])}</small></td>"
                      f"<td>{e(c['summary'])}</td></tr>")
     parts.append("</table>")
+    cm = r.get("common")
+    if cm and (cm["code_excluded"] or cm["lines_excluded"]):
+        libs = f" Bundled libraries recognised: {', '.join(cm['libraries_bundled'])}." if cm["libraries_bundled"] else ""
+        parts.append(f"<p><small>Excluded as common: {cm['code_excluded']} code fingerprints and "
+                     f"{cm['lines_excluded']} text lines (shared libraries, licence texts, your <code>common add</code> "
+                     f"index).{e(libs)}</small></p>")
     if r["weak_only"]:
         parts.append("<p class='rec' style='background:#8a1f1f'>This report rests only on mechanics. Don't file.</p>")
     parts.append(f"<h2>Trap markers ({r['traps']['count']} found)</h2>")

@@ -1,0 +1,8 @@
+{
+  "name": "RbxlFixture",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": { "$path": "src/ReplicatedStorage" },
+    "ServerStorage": { "$path": "src/ServerStorage" }
+  }
+}

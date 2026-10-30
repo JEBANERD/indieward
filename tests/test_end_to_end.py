@@ -26,7 +26,7 @@ import pytest
 from PIL import Image
 
 import gamefixture as gf
-from indieward import check, certificate, cli, mediaio, package, registry, timestamp, traps, verify
+from indieward import check, certificate, cli, mediaio, notice, package, registry, timestamp, traps, verify
 from indieward.vault import NotVerified, Vault
 
 ITCH_URL = "https://teststudio.itch.io/lantern-moth"
@@ -68,6 +68,7 @@ def world(tmp_path_factory, local_tsa):
     vres = verify.verify_page(v, "itch", ITCH_URL)
     v.set_first_published("2026-10-01")
     check.set_setting(v, "mechanics", ["lamp", "chain", "bell", "night cycle", "glow"])
+    notice.generate(v)
 
     reg = []
     reg += registry.register_path(v, orig / "art", "art")
@@ -177,6 +178,25 @@ def test_image_watermark_survives_screenshot_and_reencode(world, tmp_path):
     assert not cli.detect_file(v, clean)["detected"]
 
 
+def test_image_watermark_screenshot_margin_across_payloads(tmp_path):
+    # Every vault gets random payloads, so detection must not hinge on a lucky one.
+    # moth_1 is the fixture image with the least headroom under the screenshot transform.
+    from indieward import payload, wm_core, wm_image
+    src = tmp_path / "moth_1.png"
+    gf._art(101).save(src)
+    rgb = np.asarray(Image.open(src).convert("RGB"), dtype=np.float64)
+    rng = np.random.default_rng(2026)
+    zs = []
+    for i in range(6):
+        p = payload.make(rng.bytes(32), int(rng.integers(0, 2**payload.ID_BITS)))
+        out, ref = wm_image.embed_array(rgb, p)
+        marked = tmp_path / f"marked_{i}.png"
+        Image.fromarray(out.astype(np.uint8)).save(marked)
+        shot = _screenshot(marked, tmp_path / f"shot_{i}.png")
+        zs.append(wm_image.match_array(np.asarray(Image.open(shot).convert("RGB"), dtype=np.float64), p, ref)["z"])
+    assert min(zs) >= wm_core.DETECT_Z + 1.0, zs
+
+
 def test_audio_watermark_survives_reencode(world, tmp_path):
     v = world["vault"]
     marked = world["orig"] / "indieward_out" / "theme.wav"
@@ -277,6 +297,13 @@ def test_report_lists_common_exclusions(world):
     r = _report(world, "clone")
     assert r["common"]["libraries_bundled"] == []  # the fixture games bundle no known library
     assert set(r["common"]) == {"libraries_bundled", "code_excluded", "lines_excluded"}
+
+
+def test_notice_removed_reported_for_clone_only(world):
+    clone, unrel = _report(world, "clone"), _report(world, "unrelated")
+    assert clone["notice"]["removed"] is True and world["clone"]["notice_removed"] is True
+    assert "Copyright notice" in Path(world["clone"]["report_html"]).read_text()
+    assert unrel["notice"]["removed"] is False  # no copied code or art, so nothing to report
 
 
 def test_unrelated_scores_low_no_traps(world):

@@ -73,7 +73,7 @@ def build() -> dict:
         for m in sorted(tar.getmembers(), key=lambda m: m.name):
             if m.isfile() and rx.match(m.name):
                 text = tar.extractfile(m).read().decode("utf-8", "replace")
-                fps |= set(fp_code.winnow(fp_code.tokens_with_lines(text)))
+                fps |= set(fp_code.winnow(fp_code.tokens_with_lines(text, m.name)))
                 files.append(m.name.removeprefix("package/"))
         libs.append({**info, "files": files, "count": len(fps), "fingerprints": pack(fps)})
         print(f"{name}@{version}: {len(files)} files, {len(fps)} fingerprints", file=sys.stderr)

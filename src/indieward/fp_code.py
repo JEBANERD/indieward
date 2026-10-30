@@ -28,14 +28,32 @@ let import from async def lambda with del global nonlocal assert raise except el
 of auto unsigned signed char double long short template typename operator sizeof constexpr inline extern
 """.split())
 
-_COMMENT_RE = re.compile(
-    r"--\[(=*)\[.*?\]\1\]"  # Lua long comments
-    r"|/\*.*?\*/"  # C block
-    r"|//[^\n]*"  # C line
-    r"|--[^\n]*"  # Lua line
-    r"|#(?!include|define|if|endif|pragma|region|endregion)[^\n]*",  # Python/GDScript line
-    re.S,
-)
+# Comment syntax depends on the language. Applying every language's rules to every file broke minified JS:
+# the first `i--` started a "Lua comment" and `"#fff"` a "Python comment", each swallowing the rest of a
+# one-line bundle. Strings are matched first, so comment markers inside them (URLs, colours) stay text.
+_STRINGS = r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|`(?:\\.|[^`\\])*`'
+_C = r"/\*.*?\*/|//[^\n]*"
+_LUA = r"--\[(?P<eq>=*)\[.*?\](?P=eq)\]|--[^\n]*"
+_HASH = r"#(?!include|define|if|endif|pragma|region|endregion)[^\n]*"
+_FAMILY = {
+    **dict.fromkeys(".js .mjs .cjs .jsx .ts .tsx .cs .c .h .cc .cpp .hpp .cxx .hx .gml .java .kt .go .rs .swift"
+                    " .shader .hlsl .glsl .gdshader".split(), "c"),
+    **dict.fromkeys(".lua .luau".split(), "lua"),
+    **dict.fromkeys(".py .gd .rb .sh".split(), "hash"),
+}
+_COMMENT_RES = {
+    "c": re.compile(f"(?P<s>{_STRINGS})|{_C}", re.S),
+    "lua": re.compile(f"(?P<s>{_STRINGS})|{_LUA}", re.S),
+    "hash": re.compile(f"(?P<s>{_STRINGS})|{_HASH}", re.S),
+    # Unknown extension (decompiled or extracted text): all rules, as before, but strings still win.
+    None: re.compile(f"(?P<s>{_STRINGS})|{_LUA}|{_C}|{_HASH}", re.S),
+}
+
+
+def comment_family(name: str) -> str | None:
+    return _FAMILY.get(Path(name).suffix.lower())
+
+
 _TOKEN_RE = re.compile(
     r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|`(?:\\.|[^`\\])*`'  # strings
     r"|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|0x[0-9a-fA-F]+"  # numbers
@@ -44,11 +62,12 @@ _TOKEN_RE = re.compile(
 )
 
 
-def tokens_with_lines(text: str) -> list[tuple[str, int]]:
-    def blank(m):  # keep line numbers stable
-        return "\n" * m.group(0).count("\n")
+def tokens_with_lines(text: str, name: str = "") -> list[tuple[str, int]]:
+    """Normalized tokens with their line numbers. `name` picks the comment rules by file extension."""
+    def blank(m):  # keep strings; replace comments with their newlines, so line numbers stay stable
+        return m.group(0) if m.group("s") is not None else "\n" * m.group(0).count("\n")
 
-    text = _COMMENT_RE.sub(blank, text)
+    text = _COMMENT_RES[comment_family(name)].sub(blank, text)
     out = []
     line, pos = 1, 0  # count newlines incrementally; recounting from the start is quadratic on big bundles
     for m in _TOKEN_RE.finditer(text):
@@ -100,7 +119,7 @@ def fingerprint_files(paths) -> dict:
             text = p.read_text("utf-8", errors="replace")
         except OSError:
             continue
-        toks = tokens_with_lines(text)
+        toks = tokens_with_lines(text, p.name)
         files[p.name] = len(toks)
         for h, line in winnow(toks).items():
             fps.setdefault(str(h), [p.name, line])
@@ -110,7 +129,7 @@ def fingerprint_files(paths) -> dict:
 def fingerprint_text_blobs(blobs: dict[str, str]) -> dict:
     fps: dict[str, list] = {}
     for name, text in blobs.items():
-        for h, line in winnow(tokens_with_lines(text)).items():
+        for h, line in winnow(tokens_with_lines(text, name)).items():
             fps.setdefault(str(h), [name, line])
     return {"k": K, "w": W, "fingerprints": fps, "files": {n: 0 for n in blobs}}
 

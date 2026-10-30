@@ -50,9 +50,11 @@ def tokens_with_lines(text: str) -> list[tuple[str, int]]:
 
     text = _COMMENT_RE.sub(blank, text)
     out = []
+    line, pos = 1, 0  # count newlines incrementally; recounting from the start is quadratic on big bundles
     for m in _TOKEN_RE.finditer(text):
         t = m.group(0)
-        line = text.count("\n", 0, m.start()) + 1
+        line += text.count("\n", pos, m.start())
+        pos = m.start()
         c = t[0]
         if c in "\"'`":
             tok = "S"

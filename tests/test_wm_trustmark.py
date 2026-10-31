@@ -133,6 +133,20 @@ def test_check_report_lists_blind_hit(tmp_path, monkeypatch, fake_tm):
     assert "blind read, MAC verified" in html and "cannot show whether an AI was used" in html
 
 
+def test_check_says_when_trustmark_marks_were_not_checked(tmp_path, monkeypatch, fake_tm):
+    v = _vault(tmp_path / "game", monkeypatch)
+    registry.register_file(v, _art(tmp_path / "hero.png"), out_dir=tmp_path / "out", backend="trustmark")
+
+    def gone():
+        raise wm_trustmark.Unavailable('the TrustMark backend needs: pip install "indieward[trustmark]"')
+
+    monkeypatch.setattr(wm_trustmark, "_tm", gone)
+    res = check.run(v, [tmp_path / "out" / "hero.png"])
+    report = json.loads(open(res["report_json"], encoding="utf-8").read())
+    assert report["watermarks"] == [] and "weren't checked" in report["watermark_note"]
+    assert "Not checked:" in open(res["report_html"], encoding="utf-8").read()
+
+
 def test_other_schema_is_not_a_hit(tmp_path, monkeypatch, fake_tm):
     v = _vault(tmp_path / "game", monkeypatch)
     registry.register_file(v, _art(tmp_path / "hero.png"), out_dir=tmp_path / "out", backend="trustmark")
@@ -147,7 +161,7 @@ def _need_trustmark():
     if os.environ.get("INDIEWARD_REQUIRE_TRUSTMARK") == "1":
         import trustmark  # noqa: F401  (fail loudly instead of skipping)
     else:
-        _need_trustmark()
+        pytest.importorskip("trustmark")
 
 
 def _jpeg(img, q):

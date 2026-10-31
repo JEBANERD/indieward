@@ -54,14 +54,6 @@ class Unavailable(RuntimeError):
     pass
 
 
-def available() -> bool:
-    try:
-        import trustmark  # noqa: F401
-    except ImportError:
-        return False
-    return True
-
-
 def _verify_weights(tm_mod) -> None:
     """Refuse to run on model files that don't match TrustMark's published checksums."""
     models = pathlib.Path(tm_mod.__file__).parent / "models"
@@ -81,8 +73,12 @@ def _tm():
             from trustmark import TrustMark, trustmark as tm_mod
         except ImportError as e:
             raise Unavailable('the TrustMark backend needs: pip install "indieward[trustmark]"') from e
-        tm = TrustMark(verbose=False, model_type=MODEL_TYPE, encoding_type=TrustMark.Encoding.BCH_4,
-                       loadRemover=False, device="cpu")
+        try:
+            tm = TrustMark(verbose=False, model_type=MODEL_TYPE, encoding_type=TrustMark.Encoding.BCH_4,
+                           loadRemover=False, device="cpu")
+        except Exception as e:  # usually the one-time weight download failed (offline)
+            raise Unavailable(f"couldn't load the TrustMark models ({e}); they download once from "
+                              "cai-watermark.adobe.net, so connect once and retry") from e
         _verify_weights(tm_mod)
         _TM = tm
     return _TM

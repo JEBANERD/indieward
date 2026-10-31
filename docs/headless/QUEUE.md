@@ -10,12 +10,11 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P1-01 | CI green on Linux, Windows, macOS | 1 | done | P1-00 | M |
 | P1-02 | Live services green (FreeTSA, OpenTimestamps format, Steam/Roblox/itch shapes) | 1 | done | P1-01 | M |
 | P1-03 | `indieward doctor` + Windows-first install docs | 1 | done | P1-01 | S |
-| P1-04 | Dogfood on one of Jasper's real games | 1 | needs-jasper | P1-03 | – |
 | P2-01 | Godot export: traps survive (engines/godot green) | 2 | done | P1-01 | M |
 | P2-02 | Rojo .rbxlx and .rbxl: traps survive (engines/rojo green) | 2 | done | P1-01 | M |
 | P2-03 | Unity IL2CPP via GameCI (needs a Unity licence secret) | 2 | needs-jasper | P1-01 | L |
 | P2-04 | UE5 local trap-check script + guide | 2 | done | P1-01 | S |
-| P2-05 | Optional TrustMark image backend (publicly readable marks) | 2 | needs-jasper | P1-01 | L |
+| P2-05 | Optional TrustMark image backend (publicly readable marks) | 2 | in-review | P1-01 | L |
 | P2-06 | Research + prototype AudioSeal / Video Seal backends | 2 | needs-jasper | P2-05 | L |
 | P2-07 | Vectorized image matching (2,000 × 2,000 in under 10 s) | 2 | done | P1-01 | M |
 | P2-08 | Default common-material index (popular JS libraries, licence texts) | 2 | done | P2-07 | M |
@@ -31,3 +30,4 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | needs-jasper | P1-03 | S |
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
 | P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |
+| P1-04 | Dogfood on one of Jasper's real games (deferred: no test game yet) | 1 | needs-jasper | P1-03 | – |

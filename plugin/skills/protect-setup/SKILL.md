@@ -36,6 +36,9 @@ If they use asset-store packs or engine templates, run `add_common_material` on 
 ## 4. Sign and timestamp
 `issue_certificate(project_dir)`. Two independent timestamps (RFC 3161 and OpenTimestamps) are requested; if offline they're pending, and `retry_timestamps` finishes them later. Re-issue after each batch of new registrations.
 
+## 4b. Visible copyright notice (optional)
+`copyright_notice(project_dir)` returns a credits line, SPDX file headers, build metadata fields and a short licence notice for AI coding tools (AGENTS.md). Defaults: all rights reserved, the first publication year, the vault's creator; pass `licence` (e.g. `MIT`), `year` or `holder` to change them. It only returns text: show it to the user and let them paste each piece where it belongs (credits or about screen, source headers, build metadata) or save the AGENTS.md themselves. Knowingly removing someone's name and copyright notice to enable or hide infringement can be a separate violation (17 U.S.C. §1202, https://www.copyright.gov/title17/92chap12.html), and IndieWard's checks report when a suspect has their code or art but not their notice.
+
 ## 5. Register copyright (strongly recommended)
 Not legal advice; link, don't paraphrase the law beyond this:
 - Register with the US Copyright Office through eCO: https://www.copyright.gov/registration/ . A video game is usually registered as a computer program plus audiovisual work (Circular 61: https://www.copyright.gov/circs/circ61.pdf). Source-code deposits can be redacted to protect trade secrets.

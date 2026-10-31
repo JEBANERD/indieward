@@ -240,6 +240,19 @@ def add_common_material(project_dir: str, path: str) -> dict:
 
 @mcp.tool()
 @_safe
+def copyright_notice(project_dir: str, licence: str = "", year: int = 0, holder: str = "") -> dict:
+    """Visible copyright notice for the game: a credits line, SPDX file headers, build metadata (Windows, macOS,
+    package.json, .itch.toml) and a short AGENTS.md licence notice for AI coding tools. Defaults: all rights
+    reserved, the first publication year (else this year), the vault's creator. Returns text only and writes no
+    file in the project: the user pastes or saves it where it belongs. IndieWard records the notice's hash so checks
+    can report when a copy has your code or art but not your notice."""
+    from . import notice
+
+    return notice.generate(find_vault(project_dir), licence or notice.ALL_RIGHTS, year or None, holder or None)
+
+
+@mcp.tool()
+@_safe
 def set_mechanics(project_dir: str, mechanics: list[str]) -> dict:
     """List the game's mechanics in a few words each (scored only as Weak evidence)."""
     check.set_setting(find_vault(project_dir), "mechanics", mechanics)

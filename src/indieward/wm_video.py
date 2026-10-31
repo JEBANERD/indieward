@@ -12,8 +12,9 @@ is needed, so this check also works on clips cut from a longer video.
 Survives: H.264/H.265/VP9 re-encodes, downscaling (e.g. 1080p to 480p),
 frame-rate changes, trimming, platform transcodes. Defeated by: cropping
 more than a few percent, mirroring, heavy overlays, speed changes, screen
-recording at an angle, AI re-generation, and targeted removal. The optional
-Video Seal backend is designed for stronger robustness.
+recording at an angle, AI re-generation, and targeted removal. Meta's Video
+Seal was tested as an alternative; it isn't proven on game footage yet
+(docs/research/neural-backends.md).
 
 Visible burn-in marks (``burn_in``) are a deterrent, not protection: they can
 be painted out, but they make casual reposts traceable.

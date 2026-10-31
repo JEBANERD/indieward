@@ -26,7 +26,7 @@ Not legal advice. Links go to official sources; check them before you rely on a 
     1. Register trailers, clips, screenshots and key art so they get invisible marks, and post the marked copies.
        Optional, for images: `register --backend trustmark` (after `pip install "indieward[trustmark]"`, which pulls in PyTorch) uses Adobe TrustMark, which anyone can read without your vault and which survives small crops. It is slightly more visible than the built-in mark, so check it at 100% zoom. Only your key can confirm a mark is yours.
     2. Burn a visible corner mark into every public video, using different text per platform or press contact: `indieward footage burn-in trailer.mp4 trailer_yt.mp4 --text "@studio · YouTube"`.
-    3. Post previews at 720p or lower (`indieward footage preview`) and keep the masters private.
+    3. Post previews at 720p (`indieward footage preview`, the default) and keep the masters private. Don't go lower: platforms re-compress what you upload, and in tests a 360p copy compressed that hard often lost the invisible mark.
     4. Cut trailers so they never show a full level, a full UI layout, a full map, tech tree or shop screen. Show mechanics in short fragments.
     5. On YouTube, leave third-party AI training access off.
     6. On your website, add the AI opt-out lines from `indieward signals robots`. These are requests some crawlers honor, not blocks.

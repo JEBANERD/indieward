@@ -34,6 +34,14 @@ LIBS = [
     ("howler", "2.2.4", r"^package/dist/[^/]+\.js$"),
     ("matter-js", "0.20.0", r"^package/build/[^/]+\.js$"),
     ("lodash", "4.18.1", r"^package/(?:lodash|lodash\.min|core|core\.min)\.js$"),
+    # the UMD package: @babylonjs/core ships thousands of separate ES modules, not the bundle games ship
+    ("babylonjs", "9.33.1", r"^package/babylon\.js$"),
+    ("react", "19.3.1", r"^package/cjs/react\.(?:production|development)\.js$"),
+    ("react-dom", "19.3.1", r"^package/cjs/react-dom(?:-client)?\.(?:production|development)\.js$"),
+    ("vue", "3.5.44", r"^package/dist/vue\.(?:global|esm-browser)(?:\.prod)?\.js$"),
+    ("jquery", "4.0.0", r"^package/dist/jquery(?:\.slim)?(?:\.min)?\.js$"),
+    ("kaboom", "3000.1.17", r"^package/dist/kaboom\.(?:js|mjs)$"),
+    ("excalibur", "0.32.0", r"^package/build/dist/excalibur(?:\.min)?\.js$"),
 ]
 LICENCE_PKG = ("spdx-license-list", "6.12.0")
 LICENCES = ["MIT", "Apache-2.0", "BSD-3-Clause", "CC-BY-4.0", "OFL-1.1"]

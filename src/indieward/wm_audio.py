@@ -11,8 +11,8 @@ not FFT bins, so resampling doesn't matter.
 
 Survives: MP3, AAC, Ogg re-encodes; resampling; volume changes; trimming;
 mixing down to mono. Defeated by: speed or pitch changes, heavy noise, re-recording
-or re-composing the music, and targeted removal. The optional AudioSeal backend
-has similar limits (independent tests found speed changes defeat it too).
+or re-composing the music, and targeted removal. Meta's AudioSeal was tested as
+an alternative and didn't do better (docs/research/neural-backends.md).
 """
 from __future__ import annotations
 

@@ -24,9 +24,10 @@ import numpy as np
 from PIL import Image
 
 from . import common_index, fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, notice, payload as pl, registry, traps, util, verify
-from . import wm_audio, wm_image, wm_video
+from . import wm_audio, wm_image, wm_trustmark, wm_video
 from .vault import Vault
 
+TRUSTMARK_MAX_IMAGES = 300  # blind reads cost ~0.1 s each on a CPU
 STRENGTH = {"traps": "Strong", "code": "Strong", "art": "Strong", "text": "Strong",
             "ui": "Supporting", "audio": "Supporting", "name": "Supporting", "video": "Supporting",
             "mechanics": "Weak"}
@@ -321,6 +322,13 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
             if m["detected"]:
                 wms.append({"media": "image", "category": r["category"], "registered": r["name"],
                             "suspect": sus.images[j][0], **m})
+    # TrustMark-backed images: blind read of each suspect image, then the MAC check
+    tm_rows = [a for a in assets if a["kind"] == "image" and a["wm_backend"] == wm_trustmark.BACKEND]
+    if tm_rows and sus.images and wm_trustmark.available():
+        for name, im in sus.images[:TRUSTMARK_MAX_IMAGES]:
+            for r, m in wm_trustmark.matches(im, vault.mac_key(), tm_rows):
+                wms.append({"media": "image", "category": r["category"], "registered": r["name"],
+                            "suspect": name, **m})
 
     # 5. text
     reg_lines = []
@@ -582,8 +590,11 @@ table{{border-collapse:collapse;width:100%;margin:8px 0;table-layout:auto}}td,th
     if r["watermarks"]:
         parts.append("<table><tr><th>Media</th><th>Your file</th><th>Suspect file</th><th>Detection strength (z)</th></tr>")
         for w in r["watermarks"]:
-            parts.append(f"<tr><td>{e(w['media'])}</td><td>{e(w['registered'])}</td><td>{e(w['suspect'])}</td><td>{w['z']}</td></tr>")
-        parts.append("</table><p><small>z above 6 means the chance of a false detection is about one in a billion per test.</small></p>")
+            strength = w["z"] if w.get("z") is not None else "blind read, MAC verified"
+            parts.append(f"<tr><td>{e(w['media'])}</td><td>{e(w['registered'])}</td><td>{e(w['suspect'])}</td><td>{e(str(strength))}</td></tr>")
+        parts.append("</table><p><small>z above 6 means the chance of a false detection is about one in a billion per test. "
+                     "\"Blind read, MAC verified\" (TrustMark backend) means the ID was read without your vault and its "
+                     "code matched your key, which a random image does less than once in a billion tries.</small></p>")
     else:
         parts.append("<p>None detected. Watermarks are easy to strip; this doesn't mean nothing was copied.</p>")
     if r.get("notice"):

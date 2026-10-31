@@ -23,7 +23,17 @@ Layout derivation is public: `seed = SHA-256("IndieWard IW-Mark v1|" ‖ label �
 | `audio` | Band log-power, 40 Hz bands from 200 to 7000 Hz (n = 170), analyzed at 16 kHz, 1024/256 STFT | ±0.04 nepers per band, gated in time by a 61-slot pseudo-random ±1 sequence of 0.2 s slots | Informed: align to the stored band reference, subtract, whiten per band, correlate with band pattern × time chip |
 | `video` | Image-profile features per frame | ±0.06 × envelope, gated by a 61-slot sequence of 0.3 s slots | Blind: frames at 10 fps, 1-second moving-average removed, best offset over one chip period |
 
-Detection statistic: empirical z-score against 256 random decoy patterns (and, for audio, random decoy time chips). Thresholds: z ≥ 6 (image, audio informed), z ≥ 7 (video, best-of-offsets). Implementations may use stronger backends (Adobe TrustMark for images, Meta Video Seal, Meta AudioSeal) carrying the same 64-bit payload; the record in the certificate names the backend.
+Detection statistic: empirical z-score against 256 random decoy patterns (and, for audio, random decoy time chips). Thresholds: z ≥ 6 (image, audio informed), z ≥ 7 (video, best-of-offsets). Implementations may use other backends carrying the same 64-bit payload; the record in the certificate names the backend (`watermark.backend`).
+
+### 2.1 TrustMark backend (`trustmark-q-bch4-v1`, images, optional)
+
+A blind backend: anyone can read the payload without the creator's reference, so a store or platform can read `record_id` from an image on its own.
+
+- **Model:** [Adobe TrustMark](https://github.com/adobe/trustmark) (MIT, code and weights), variant `Q`, CPU or GPU. Weights come from TrustMark's official host and must match its published MD5 checksums.
+- **Packing:** TrustMark's 100-bit secret in `BCH_4` mode = 68 data bits + 28 BCH parity bits + 4 schema bits (`0010`); corrects up to 4 bit errors. The 68 data bits are the 64-bit payload (bit 63 first) followed by the tag `0001`.
+- **Reading:** decode in TrustMark `binary` mode. Accept only if BCH decoding succeeds, the schema is `BCH_4`, and data bits 64–67 equal `0001`. Bits 0–63 are the payload: `record_id` and `mac` as in section 1.
+- **Genuineness:** only the creator's `mac_key` confirms the `mac` (section 1). Unmarked images sometimes decode as a valid BCH packet; the tag and MAC together bring a false hit below one in a billion per image.
+- **Measured** (IndieWard's test art, 12 images at 512×512): PSNR ≈ 41 dB (built-in: ≈ 46 dB). Payload read back after JPEG 90/75 12/12, JPEG 50 10/12, half-size 12/12, half-size + JPEG 75 10/12, 5% crop per side 12/12, 10% crop 11/12, 2° rotation 11/12. No unmarked image passed the tag and MAC checks.
 
 ## 3. Certificate (JSON)
 

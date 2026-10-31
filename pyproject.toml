@@ -20,6 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 mcp = ["mcp>=1.2"]  # 1.x (FastMCP) and 2.x (MCPServer) both supported
 roblox = ["zstandard>=0.22"]
+trustmark = ["trustmark>=0.9"]  # Adobe TrustMark (MIT); pulls in PyTorch (CPU is fine)
 site = ["markdown-it-py>=3"]  # guide site builder (site/build.py)
 dev = ["pytest>=8", "markdown-it-py>=3"]
 
@@ -41,4 +42,5 @@ markers = [
   "engine: needs a game engine or build tool on PATH (engines workflow)",
   "live: talks to real outside services (live workflow; set INDIEWARD_LIVE=1)",
   "slow: benchmarks, run by hand with -m slow",
+  "trustmark: needs the optional trustmark extra (skipped when it isn't installed)",
 ]

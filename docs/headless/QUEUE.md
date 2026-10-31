@@ -27,7 +27,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-05 | IndieWard name + fork policy (trademark the name so unsafe forks can't use it) | 3 | in-review | P1-00 | – |
 | P4-01 | Canary monitoring via official code-search APIs (web and open-source games) | 4 | done | P2-10 | M |
 | P3-01 | Static guide site + Cloudflare Pages deploy workflow | 3 | done | P1-01 | M |
-| P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | needs-jasper | P1-03 | S |
+| P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | in-review | P1-03 | S |
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
 | P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |
 | P1-04 | Dogfood on one of Jasper's real games (deferred: no test game yet) | 1 | needs-jasper | P1-03 | – |

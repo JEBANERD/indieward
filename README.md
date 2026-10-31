@@ -147,4 +147,4 @@ All code is open source (MIT). What stays private is each creator's own data on 
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Forks are welcome; the IndieWard name is reserved for builds that keep its safety rules (see [TRADEMARKS.md](TRADEMARKS.md)).

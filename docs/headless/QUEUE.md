@@ -32,3 +32,4 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | needs-jasper | P1-03 | S |
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
 | P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |
+| P2-16 | `traps inject` for Godot `.tres` translations and Unity Localization string tables | 2 | needs-jasper | P2-09 | M |

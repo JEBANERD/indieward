@@ -48,7 +48,7 @@ Three 10-second 640×360 30 fps clips from `tests/gamefixture.py` (moving art pl
 | as saved (CRF 18) | 3/3 | 3/3 | 100% |
 | H.264 CRF 28 | 3/3 | 0/3 | 85% |
 | H.264 CRF 35 | 0/3 | 0/3 | 66% |
-| half size + CRF 28 | 0/3 | 0/3 | 63% |
+| half size (320×180) + CRF 28 | 0/3 | 0/3 | 63% |
 | crop 10% per side | 0/3 | 0/3 | 58% |
 | re-timed to 15 fps | 3/3 | 1/3 | 98% |
 | trim the first 3 s | 3/3 | 0/3 | 95% |
@@ -56,6 +56,8 @@ Three 10-second 640×360 30 fps clips from `tests/gamefixture.py` (moving art pl
 Quality: Video Seal PSNR 49 dB before encoding, at the default strength (0.2). It took about 55 s to embed a 10 s clip on a CPU, and no unmarked clip passed the MAC check.
 
 Meta's own figures for v1.0 are much better: 98% bit accuracy at H.264 CRF 30, 99.9% after resizing, and 94% after a crop to 0.71 of each side. Those were measured on high-resolution natural video (SA-V, about 1350×1050). Our fixtures are small, synthetic and flat-coloured, and that likely explains most of the gap. **Treat our video numbers as "not proven on game-like footage" rather than "Video Seal is weak".** Crops beat both backends here.
+
+The built-in mark's "half size" failure comes from how small the result is, not from downscaling as such. Halved from 640×360, the clip ends up 320×180, and at CRF 28 that loses the mark. The same clip at CRF 18 keeps it (3/3). From 1280×720, every downscale we tried kept it, down to 426×240 at CRF 23 and 640×360 at CRF 28 (3/3 each, z 13–25 against a threshold of 7).
 
 ## What would change this
 

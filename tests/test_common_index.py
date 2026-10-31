@@ -67,6 +67,46 @@ def test_bundled_library_is_excluded_only_when_present(monkeypatch):
     assert common_index.detect(_fps(_fake_js(4, 60))["fingerprints"]) == ([], set())
 
 
+def _two_libs_sharing_generic_code(monkeypatch):
+    """Libraries A and B that share a big block of generic code, as big JS libraries do."""
+    shared, a_own, b_own = _fake_js(10, 300), _fake_js(11, 300), _fake_js(12, 300)
+    libs = [{"name": "liba", "version": "1.0.0", "fingerprints": frozenset(_fps(a_own, shared)["fingerprints"])},
+            {"name": "libb", "version": "2.0.0", "fingerprints": frozenset(_fps(b_own, shared)["fingerprints"])}]
+    common_index._add_unique(libs)
+    monkeypatch.setattr(common_index, "load", lambda: {"libraries": libs, "lines": frozenset()})
+    return libs, shared, a_own, b_own
+
+
+def test_generic_overlap_no_longer_counts_as_bundling_another_library(monkeypatch):
+    (liba, libb), shared, a_own, _ = _two_libs_sharing_generic_code(monkeypatch)
+    bundle_a = set(_fps(a_own, shared)["fingerprints"])
+    # under the old rule (all of B's fingerprints) A's bundle passes for B too
+    n_old = len(bundle_a & libb["fingerprints"])
+    assert n_old >= common_index.MIN_SHARED and n_old >= common_index.MIN_SHARE * len(libb["fingerprints"])
+    # on B's unique fingerprints it doesn't
+    names, exclude = common_index.detect(bundle_a)
+    assert names == ["liba@1.0.0"]
+    assert exclude == set(liba["fingerprints"])  # a detected library still drops all its fingerprints
+
+
+def test_real_bundles_still_detect_with_shared_code(monkeypatch):
+    (liba, libb), shared, a_own, b_own = _two_libs_sharing_generic_code(monkeypatch)
+    assert common_index.detect(_fps(b_own, shared)["fingerprints"])[0] == ["libb@2.0.0"]
+    both = common_index.detect(_fps(a_own, b_own, shared)["fingerprints"])
+    assert both[0] == ["liba@1.0.0", "libb@2.0.0"] and both[1] == set(liba["fingerprints"]) | set(libb["fingerprints"])
+    # an unrelated game bundling B scores 0 against a creator's build bundling B; a real copy still scores high
+    vault_build = _fps(b_own, shared, _fake_js(20, 60))
+    unrelated = _fps(b_own, shared, _fake_js(21, 60))
+    assert fp_code.compare(vault_build, unrelated, common_index.detect(unrelated["fingerprints"])[1])["score"] == 0
+    copy = _fps(b_own, shared, _fake_js(20, 60))
+    assert fp_code.compare(vault_build, copy, common_index.detect(copy["fingerprints"])[1])["score"] >= 60
+
+
+def test_shipped_libraries_each_keep_a_large_unique_set():
+    for lib in common_index.load()["libraries"]:
+        assert len(lib["unique"]) >= 0.4 * len(lib["fingerprints"]), lib["name"]
+
+
 @pytest.mark.skipif(not os.environ.get("INDIEWARD_THREE_JS"), reason="set INDIEWARD_THREE_JS to a three.module.js")
 def test_suspect_bundling_three_scores_zero_against_vault_bundling_it():
     three = Path(os.environ["INDIEWARD_THREE_JS"]).read_text("utf-8", errors="replace")

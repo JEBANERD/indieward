@@ -36,6 +36,8 @@ If they use asset-store packs or engine templates, run `add_common_material` on 
 ## 4. Sign and timestamp
 `issue_certificate(project_dir)`. Two independent timestamps (RFC 3161 and OpenTimestamps) are requested; if offline they're pending, and `retry_timestamps` finishes them later. Re-issue after each batch of new registrations.
 
+Optional: `copyright_notice(project_dir)` returns a visible copyright line for the credits screen, SPDX headers for source files, build metadata fields and a short AGENTS.md licence notice (pass `licence` such as `MIT` if they use one). It writes no files: show the creator the text and let them paste or save it. Visible notices can count as copyright management information, and checks report when a suspect has their code or art but not the notice.
+
 ## 5. Register copyright (strongly recommended)
 Not legal advice; link, don't paraphrase the law beyond this:
 - Register with the US Copyright Office through eCO: https://www.copyright.gov/registration/ . A video game is usually registered as a computer program plus audiovisual work (Circular 61: https://www.copyright.gov/circs/circ61.pdf). Source-code deposits can be redacted to protect trade secrets.

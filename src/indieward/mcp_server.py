@@ -20,7 +20,7 @@ except ImportError:
     except ImportError as e:  # pragma: no cover
         raise SystemExit("The MCP server needs the 'mcp' package: pip install 'indieward[mcp]'") from e
 
-from . import certificate, check, cli, package, registry, signals, stores, timestamp, traps, verify, wm_video
+from . import certificate, check, cli, notice, package, registry, signals, stores, timestamp, traps, verify, wm_video
 from . import doctor as _doctor
 from .vault import Vault, find_vault
 
@@ -242,6 +242,16 @@ def set_mechanics(project_dir: str, mechanics: list[str]) -> dict:
     """List the game's mechanics in a few words each (scored only as Weak evidence)."""
     check.set_setting(find_vault(project_dir), "mechanics", mechanics)
     return {"mechanics": mechanics}
+
+
+@mcp.tool()
+@_safe
+def copyright_notice(project_dir: str, licence: str = "", year: int = 0, holder: str = "") -> dict:
+    """Visible copyright notice texts for the creator to paste in: credits line, SPDX file headers, Windows/macOS/
+    package.json/itch metadata and a short AGENTS.md licence notice. Returns text only and writes no files; the
+    creator pastes or saves it. Records the notice's hash so checks can report when a suspect removed it.
+    licence: an SPDX id such as MIT (default: all rights reserved). year: default first publication year."""
+    return notice.generate(find_vault(project_dir), licence or notice.ALL_RIGHTS, year or None, holder or None)
 
 
 def main():

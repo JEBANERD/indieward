@@ -34,6 +34,25 @@ def test_mcp_tool_refuses_unverified(tmp_path):
     assert "NotVerified" in text
 
 
+def test_mcp_copyright_notice_returns_text_and_writes_no_files(tmp_path):
+    from indieward import notice
+    from indieward.mcp_server import copyright_notice, mcp
+    from indieward.vault import Vault
+
+    assert "copyright_notice" in {t.name for t in asyncio.run(mcp.list_tools())}
+    v = Vault.init(tmp_path, "Lantern Moth", "Test Studio")
+    before = {p for p in tmp_path.rglob("*") if ".indieward" not in p.parts}
+    r = copyright_notice(str(tmp_path), licence="MIT", year=2026)
+    assert r["credits"] == "Lantern Moth © 2026 Test Studio. Licensed under MIT (see LICENSE)."
+    assert "# Licence notice: Lantern Moth" in r["agents_md"]
+    assert notice.recorded(v)["sha256"] == r["sha256"]
+    after = {p for p in tmp_path.rglob("*") if ".indieward" not in p.parts}
+    assert after == before  # nothing written outside the vault
+    empty = tmp_path.parent / (tmp_path.name + "_novault")
+    empty.mkdir()
+    assert "error" in copyright_notice(str(empty))  # no vault: a friendly error, not a crash
+
+
 def _hook(args, event):
     p = subprocess.run([sys.executable, "-m", "indieward.hooks", *args], input=json.dumps(event),
                        capture_output=True, text=True, cwd=ROOT, env={"PYTHONPATH": str(ROOT / "src")})

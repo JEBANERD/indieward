@@ -25,6 +25,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-12 | Guide update: code signing, licence choice, CMI, EU decompilation, Third Circuit note | 2 | done | P2-10 | S |
 | P2-13 | Hook: stop `git clean -x` / `git stash --all` wiping the gitignored vault | 2 | done | P2-11 | S |
 | P2-14 | Pick code-comment rules by file type (minified JS is nearly invisible to code checks) | 2 | done | P2-08 | M |
+| P2-15 | MCP tool for `indieward notice` (returns text; writes no files) | 2 | in-review | P2-10 | S |
 | P3-05 | IndieWard name + fork policy (trademark the name so unsafe forks can't use it) | 3 | needs-jasper | P1-00 | – |
 | P4-01 | Canary monitoring via official code-search APIs (web and open-source games) | 4 | done | P2-10 | M |
 | P3-01 | Static guide site + Cloudflare Pages deploy workflow | 3 | done | P1-01 | M |

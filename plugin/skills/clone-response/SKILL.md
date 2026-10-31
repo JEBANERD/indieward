@@ -17,5 +17,6 @@ Stay calm and practical. Move in this order; the goal is a complete, honest pack
 8. **Counter-notice?** The store may restore the listing in 10-14 business days unless they file suit (17 U.S.C. 512(g)). That's the moment for a lawyer.
 9. **Re-uploads:** run a new check on each one; reuse the same certificate.
 10. **Next build:** if a package revealed core traps, run `indieward traps rotate-core`, then add new traps with the `add-traps` skill.
+11. **Optional canary search** for more copies in public code: call `watch_plan(project_dir, sources)` and **show the user exactly what each source would receive**. Software Heritage (`swh`) gets hashes only. GitHub and npm get the actual trap strings, which tells those companies the strings. Only if they agree, call `watch_run` with the plan's `confirm_code`. GitHub needs a `GITHUB_TOKEN` in the server's environment; never ask the user to paste a token into the chat. `watch_leads` lists what was found. Leads are for review only; nothing is filed.
 
 See a lawyer when: there's a counter-notice, real money involved, a cloner outside the US, or a lawsuit on the table. Low-cost help: Volunteer Lawyers for the Arts, law school IP clinics, USPTO Pro Bono Program. Not legal advice.

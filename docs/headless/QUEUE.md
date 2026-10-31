@@ -23,7 +23,6 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-10 | `indieward notice`: visible copyright / licence metadata (CMI) + factual AGENTS.md notice | 2 | done | P1-01 | S |
 | P2-11 | Hook: stop AI tools editing or deleting the vault (keys, vault.db, certs) | 2 | done | P1-01 | S |
 | P2-12 | Guide update: code signing, licence choice, CMI, EU decompilation, Third Circuit note | 2 | done | P2-10 | S |
-| P2-18 | More libraries in the common-material index (Babylon, React, Vue, jQuery, Kaboom, Excalibur) | 2 | in-review | P2-08 | M |
 | P2-13 | Hook: stop `git clean -x` / `git stash --all` wiping the gitignored vault | 2 | done | P2-11 | S |
 | P2-14 | Pick code-comment rules by file type (minified JS is nearly invisible to code checks) | 2 | done | P2-08 | M |
 | P2-15 | MCP tool for `indieward notice` (returns text; writes no files) | 2 | done | P2-10 | S |
@@ -35,3 +34,4 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |
 | P2-16 | `traps inject` for Godot `.tres` translations and Unity Localization string tables | 2 | needs-jasper | P2-09 | M |
 | P2-17 | MCP tools for `watch` and `traps inject` (plan, then apply with a confirm code) | 2 | done | P4-01 | M |
+| P2-18 | More libraries in the common-material index (Babylon, React, Vue, jQuery, Kaboom, Excalibur) | 2 | done | P2-08 | M |

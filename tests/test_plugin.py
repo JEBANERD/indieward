@@ -214,3 +214,43 @@ def test_wipe_blocked_when_the_command_changes_directory(tmp_path):
 
 def test_wipe_blocked_without_a_usable_cwd(tmp_path):
     assert _git_hook("git clean -fdx", tmp_path / "missing") == 2
+
+
+def _tool_json(res):
+    """The JSON a tool returned, across MCP SDK versions (CallToolResult or (content, structured))."""
+    content = getattr(res, "content", None) or (res[0] if isinstance(res, tuple) else res)
+    return json.loads(content[0].text)
+
+
+def _project_files(root: Path) -> dict:
+    return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*")
+            if p.is_file() and ".indieward" not in p.relative_to(root).parts}
+
+
+def test_mcp_copyright_notice_returns_text_and_writes_nothing(tmp_path):
+    from indieward import notice
+    from indieward.mcp_server import mcp
+    from indieward.vault import Vault
+
+    assert "copyright_notice" in {t.name for t in asyncio.run(mcp.list_tools())}
+    v = Vault.init(tmp_path, "Lantern Moth", "Moth Studio LLC")
+    (tmp_path / "game.gd").write_text("extends Node\n")
+    before = _project_files(tmp_path)
+    out = _tool_json(asyncio.run(mcp.call_tool("copyright_notice", {"project_dir": str(tmp_path)})))
+    assert out["credits"].startswith("Lantern Moth © ") and "Moth Studio LLC" in out["credits"]
+    assert "All rights reserved." in out["credits"]
+    assert "Licence notice" in out["agents_md"] and "Moth Studio LLC" in out["agents_md"]
+    assert _project_files(tmp_path) == before  # text only: no AGENTS.md or anything else written
+    assert not (tmp_path / "AGENTS.md").exists()
+    assert notice.recorded(v)["sha256"] == out["sha256"]
+
+
+def test_mcp_copyright_notice_options(tmp_path):
+    from indieward.mcp_server import mcp
+    from indieward.vault import Vault
+
+    Vault.init(tmp_path, "Lantern Moth", "Moth Studio LLC")
+    out = _tool_json(asyncio.run(mcp.call_tool("copyright_notice", {
+        "project_dir": str(tmp_path), "licence": "MIT", "year": 2024, "holder": "Jo Doe"})))
+    assert out["credits"] == "Lantern Moth © 2024 Jo Doe. Licensed under MIT (see LICENSE)."
+    assert "SPDX-License-Identifier: MIT" in out["spdx"]["lines"]

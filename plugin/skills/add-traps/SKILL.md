@@ -23,4 +23,6 @@ Rules you must keep:
 4. `register_build(project_dir, build_id, exported_build_path)`. It confirms the traps survived and stores the build's fingerprints. If `ok` is false, read `advice`, fix the placement, export again and re-run.
 5. `issue_certificate` so the build's trap commitment is timestamped before release.
 
+Optional, harder to strip: also hide the build's traps in one of their own localization files (key-based `.csv`, `.tsv`, `.json` or `.po`). Call `trap_inject_plan(project_dir, build_id, file)`, **show the user the diff** and ask. Only if they say yes, call `trap_inject_apply` with the `confirm_code` from the plan (a backup is kept in the vault). Never use a file the game loops over; the plan refuses most of those.
+
 Be honest: a careful cloner can find and remove traps. Core traps stay the same across builds to resist diffing; build traps identify which build leaked. After a takedown package reveals core traps, run `indieward traps rotate-core` before the next build. Traps prove copying, not infringement by themselves; reports pair them with the copied art, code or text.

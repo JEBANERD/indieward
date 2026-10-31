@@ -8,7 +8,9 @@ sends from their own account. There is also no tool to override the
 from __future__ import annotations
 
 import functools
+import hashlib
 import json
+import os
 import traceback
 from pathlib import Path
 
@@ -20,7 +22,7 @@ except ImportError:
     except ImportError as e:  # pragma: no cover
         raise SystemExit("The MCP server needs the 'mcp' package: pip install 'indieward[mcp]'") from e
 
-from . import certificate, check, cli, package, registry, signals, stores, timestamp, traps, verify, wm_video
+from . import certificate, check, cli, inject, package, registry, signals, stores, timestamp, traps, verify, watch, wm_video
 from . import doctor as _doctor
 from .vault import Vault, find_vault
 
@@ -242,6 +244,91 @@ def set_mechanics(project_dir: str, mechanics: list[str]) -> dict:
     """List the game's mechanics in a few words each (scored only as Weak evidence)."""
     check.set_setting(find_vault(project_dir), "mechanics", mechanics)
     return {"mechanics": mechanics}
+
+
+def _confirm_code(*parts) -> str:
+    """Short hash of exactly what a plan showed, so an apply/run can't do anything else."""
+    return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+def _inject_code(build_id: str, file: str, rows: bool, plan: dict) -> str:
+    p = Path(file)
+    return _confirm_code("inject", build_id, str(p.resolve()), bool(rows), plan["diff"],
+                         hashlib.sha256(p.read_bytes()).hexdigest())
+
+
+@mcp.tool()
+@_safe
+def trap_inject_plan(project_dir: str, build_id: str, file: str, rows: bool = False) -> dict:
+    """Plan adding a build's trap values to one of the creator's own localization files (.csv, .tsv, .json, .po).
+    Writes nothing. Returns the diff and a confirm_code. Show the diff to the user; only if they say yes, call
+    trap_inject_apply with the same arguments and the confirm_code."""
+    v = find_vault(project_dir)
+    plan = inject.inject(v, build_id, file, apply=False, rows=rows)
+    plan["confirm_code"] = _inject_code(build_id, file, rows, plan)
+    plan["next"] = "Show this diff to the user. Call trap_inject_apply only after they agree."
+    return plan
+
+
+@mcp.tool()
+@_safe
+def trap_inject_apply(project_dir: str, build_id: str, file: str, confirm_code: str, rows: bool = False) -> dict:
+    """Write the change trap_inject_plan showed (a backup goes into the vault first). Call it only after the user
+    has seen that diff and agreed. Refuses if the confirm_code doesn't match, for example because the file changed."""
+    v = find_vault(project_dir)
+    plan = inject.inject(v, build_id, file, apply=False, rows=rows)
+    if confirm_code != _inject_code(build_id, file, rows, plan):
+        raise ValueError("confirm_code doesn't match the current plan: run trap_inject_plan again and show the user")
+    return inject.inject(v, build_id, file, apply=True, rows=rows)
+
+
+def _watch_plan(v, sources: list[str], include_core: bool) -> dict:
+    v.require_verified("watch for copies")
+    sources = list(dict.fromkeys(sources))
+    bad = [x for x in sources if x not in watch.SOURCES]
+    if bad or not sources:
+        raise ValueError(f"choose sources from {', '.join(watch.SOURCES)}")
+    texts, hashes = watch.text_needles(v, include_core), watch.hash_needles(v)
+    plan = {}
+    for src in sources:  # same selection as watch.run
+        if src == "swh":
+            plan[src] = [{"label": h["label"], "sends": f"{h['algo']} hash only"} for h in hashes]
+        else:
+            plan[src] = [{"label": n["label"], "sends": n["value"]} for n in texts if src == "github" or not n.get("notice")]
+    return {"sources": sources, "include_core": include_core, "will_send": plan,
+            "disclosure": watch.DISCLOSURE if any(x in watch.TEXT_SOURCES for x in sources) else None}
+
+
+@mcp.tool()
+@_safe
+def watch_plan(project_dir: str, sources: list[str], include_core: bool = False) -> dict:
+    """Show what a canary search would send to each source (swh, github, npm), without sending anything.
+    Software Heritage gets hashes only; GitHub and npm get the exact strings, which discloses them to those
+    companies. Returns a confirm_code. Show this plan to the user; only if they agree, call watch_run."""
+    plan = _watch_plan(find_vault(project_dir), sources, include_core)
+    plan["confirm_code"] = _confirm_code("watch", plan["sources"], include_core, plan["will_send"])
+    plan["next"] = "Show the user what will be sent and to whom. Call watch_run only after they agree."
+    return plan
+
+
+@mcp.tool()
+@_safe
+def watch_run(project_dir: str, sources: list[str], confirm_code: str, include_core: bool = False) -> dict:
+    """Run the canary search watch_plan showed, after the user agreed to it. Uses the GITHUB_TOKEN set in this
+    server's environment for GitHub (never pass a token as an argument). Writes leads to the vault; files nothing."""
+    v = find_vault(project_dir)
+    plan = _watch_plan(v, sources, include_core)
+    if confirm_code != _confirm_code("watch", plan["sources"], include_core, plan["will_send"]):
+        raise ValueError("confirm_code doesn't match the current plan: run watch_plan again and show the user")
+    return watch.run(v, plan["sources"], token=os.environ.get("GITHUB_TOKEN"), include_core=include_core,
+                     accept_disclosure=True)  # the user accepted the disclosure shown in watch_plan
+
+
+@mcp.tool()
+@_safe
+def watch_leads(project_dir: str) -> list:
+    """Leads found by earlier canary searches, for the user to review. Read-only."""
+    return watch.leads(find_vault(project_dir))
 
 
 def main():

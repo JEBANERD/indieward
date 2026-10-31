@@ -32,4 +32,4 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
 | P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |
 | P2-16 | `traps inject` for Godot `.tres` translations and Unity Localization string tables | 2 | needs-jasper | P2-09 | M |
-| P2-17 | MCP tools for `watch` and `traps inject` (plan, then apply with a confirm code) | 2 | todo | P4-01 | M |
+| P2-17 | MCP tools for `watch` and `traps inject` (plan, then apply with a confirm code) | 2 | in-review | P4-01 | M |

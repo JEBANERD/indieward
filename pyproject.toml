@@ -21,7 +21,7 @@ dependencies = [
 mcp = ["mcp>=1.2"]  # 1.x (FastMCP) and 2.x (MCPServer) both supported
 roblox = ["zstandard>=0.22"]
 site = ["markdown-it-py>=3"]  # guide site builder (site/build.py)
-dev = ["pytest>=8", "markdown-it-py>=3"]
+dev = ["pytest>=8", "markdown-it-py>=3", "pyyaml>=6"]
 
 [project.scripts]
 indieward = "indieward.cli:main"

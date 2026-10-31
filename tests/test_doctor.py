@@ -71,7 +71,25 @@ def test_optional_tools_dont_block(tmp_path, monkeypatch):
     assert res["ok"]
     assert not c["ots"]["ok"] and "pipx inject --include-apps indieward opentimestamps-client" in c["ots"]["fix"]
     assert not c["mcp"]["ok"] and "indieward[mcp]" in c["mcp"]["fix"]
-    assert "opt  ots" in doctor.format_report(res)
+    assert not c["trustmark"]["ok"] and "indieward[trustmark]" in c["trustmark"]["fix"]
+    report = doctor.format_report(res)
+    assert "opt  ots" in report and "opt  trustmark" in report
+
+
+@pytest.mark.parametrize("downloaded", [True, False])
+def test_trustmark_installed_reports_models(tmp_path, monkeypatch, downloaded):
+    _env(monkeypatch)
+    pkg = tmp_path / "trustmark"
+    (pkg / "models").mkdir(parents=True)
+    if downloaded:
+        for part in ("encoder", "decoder"):
+            (pkg / "models" / f"{part}_Q.ckpt").write_bytes(b"x")
+    spec = SimpleNamespace(submodule_search_locations=[str(pkg)])
+    monkeypatch.setattr(doctor.importlib.util, "find_spec", lambda n: spec)
+    c = _by_name(doctor.run(tmp_path))["trustmark"]
+    assert c["ok"] and not c["needed"] and c["fix"] is None
+    assert ("models downloaded" in c["detail"]) == downloaded
+    assert ("cai-watermark.adobe.net" in c["detail"]) != downloaded
 
 
 def test_old_python(tmp_path, monkeypatch):

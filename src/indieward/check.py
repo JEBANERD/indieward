@@ -24,9 +24,10 @@ import numpy as np
 from PIL import Image
 
 from . import common_index, fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, notice, payload as pl, registry, traps, util, verify
-from . import wm_audio, wm_image, wm_video
+from . import wm_audio, wm_image, wm_trustmark, wm_video
 from .vault import Vault
 
+TRUSTMARK_MAX_IMAGES = 300  # blind reads cost ~0.1 s each on a CPU
 STRENGTH = {"traps": "Strong", "code": "Strong", "art": "Strong", "text": "Strong",
             "ui": "Supporting", "audio": "Supporting", "name": "Supporting", "video": "Supporting",
             "mechanics": "Weak"}
@@ -321,6 +322,17 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
             if m["detected"]:
                 wms.append({"media": "image", "category": r["category"], "registered": r["name"],
                             "suspect": sus.images[j][0], **m})
+    # TrustMark-backed images: blind read of each suspect image, then the MAC check
+    tm_rows = [a for a in assets if a["kind"] == "image" and a["wm_backend"] == wm_trustmark.BACKEND]
+    wm_note = None
+    if tm_rows and sus.images:
+        try:
+            for name, im in sus.images[:TRUSTMARK_MAX_IMAGES]:
+                for r, m in wm_trustmark.matches(im, vault.mac_key(), tm_rows):
+                    wms.append({"media": "image", "category": r["category"], "registered": r["name"],
+                                "suspect": name, **m})
+        except wm_trustmark.Unavailable as e:
+            wm_note = f"{len(tm_rows)} of your images carry TrustMark marks, which weren't checked: {e}"
 
     # 5. text
     reg_lines = []
@@ -425,7 +437,7 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
 
     overall, rec, weak_only, message = _overall(cats)
     return {"categories": cats, "traps": {"count": n_traps, "found": trap_ev}, "watermarks": wms,
-            "common": {"libraries_bundled": bundled, "code_excluded": cc["excluded_common"],
+            "watermark_note": wm_note, "common": {"libraries_bundled": bundled, "code_excluded": cc["excluded_common"],
                        "lines_excluded": lines_excluded},
             "notice": notice_line, "overall": overall, "recommendation": rec, "weak_only": weak_only,
             "message": message}
@@ -582,10 +594,15 @@ table{{border-collapse:collapse;width:100%;margin:8px 0;table-layout:auto}}td,th
     if r["watermarks"]:
         parts.append("<table><tr><th>Media</th><th>Your file</th><th>Suspect file</th><th>Detection strength (z)</th></tr>")
         for w in r["watermarks"]:
-            parts.append(f"<tr><td>{e(w['media'])}</td><td>{e(w['registered'])}</td><td>{e(w['suspect'])}</td><td>{w['z']}</td></tr>")
-        parts.append("</table><p><small>z above 6 means the chance of a false detection is about one in a billion per test.</small></p>")
+            strength = w["z"] if w.get("z") is not None else "blind read, MAC verified"
+            parts.append(f"<tr><td>{e(w['media'])}</td><td>{e(w['registered'])}</td><td>{e(w['suspect'])}</td><td>{e(str(strength))}</td></tr>")
+        parts.append("</table><p><small>z above 6 means the chance of a false detection is about one in a billion per test. "
+                     "\"Blind read, MAC verified\" (TrustMark backend) means the ID was read without your vault and its "
+                     "code matched your key, which a random image does less than once in a billion tries.</small></p>")
     else:
         parts.append("<p>None detected. Watermarks are easy to strip; this doesn't mean nothing was copied.</p>")
+    if r.get("watermark_note"):
+        parts.append(f"<p><b>Not checked:</b> {e(r['watermark_note'])}</p>")
     if r.get("notice"):
         parts.append(f"<h2>Copyright notice</h2><p>{e(r['notice']['summary'])}</p>")
     for c in r["categories"]:

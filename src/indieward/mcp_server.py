@@ -96,14 +96,16 @@ def set_first_published(project_dir: str, date: str) -> dict:
 
 @mcp.tool()
 @_safe
-def register_assets(project_dir: str, paths: list[str], category: str = "", watermark: bool = True) -> dict:
+def register_assets(project_dir: str, paths: list[str], category: str = "", watermark: bool = True,
+                    backend: str = "builtin") -> dict:
     """Register files or folders: hash, fingerprint and (for images, audio, video) embed an invisible signed mark.
     category: art | ui | logo | audio | video | code | text | other (default by file type).
+    backend (images only): builtin (default) | trustmark (blind-readable; needs the indieward[trustmark] extra).
     Watermarked copies go to <project>/indieward_out/; originals are never modified."""
     v = find_vault(project_dir)
     out = []
     for p in paths:
-        out += registry.register_path(v, p, category or None, watermark)
+        out += registry.register_path(v, p, category or None, watermark, backend=backend)
     return {"registered": out, "next": "issue_certificate to sign and timestamp these registrations"}
 
 

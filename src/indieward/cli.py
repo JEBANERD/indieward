@@ -96,6 +96,9 @@ def main(argv=None) -> int:
     a.add_argument("--no-watermark", action="store_true")
     a.add_argument("--out", help="where watermarked copies go (default: indieward_out/)")
     a.add_argument("--keep-copy", action="store_true", help="also keep a copy of each original in the vault")
+    a.add_argument("--backend", choices=["builtin", "trustmark"], default="builtin",
+                   help="image watermark: builtin (owner-checked, default) or trustmark (anyone can read the ID; "
+                        'needs pip install "indieward[trustmark]")')
 
     a = sub.add_parser("traps", help="trap markers for builds")
     ts = a.add_subparsers(dest="action", required=True)
@@ -245,7 +248,8 @@ def _run(args) -> int:
     elif args.cmd == "register":
         res = []
         for p in args.paths:
-            res += registry.register_path(v, p, args.category, not args.no_watermark, args.out, args.keep_copy)
+            res += registry.register_path(v, p, args.category, not args.no_watermark, args.out, args.keep_copy,
+                                          backend=args.backend)
         _out(res, j)
         if not j:
             print("Next: `indieward cert` to sign and timestamp a certificate covering these files.")
@@ -356,15 +360,20 @@ def _run(args) -> int:
 def detect_file(v, path) -> dict:
     """Check one file against every registered mark of the same kind."""
     import numpy as np
+    from PIL import Image
 
-    from . import mediaio, registry, util, wm_audio, wm_image, wm_video
+    from . import mediaio, registry, util, wm_audio, wm_image, wm_trustmark, wm_video
 
     kind = util.kind_for(path)
     hits = []
-    for r in registry.assets(v, kind):
-        if not r["wm_payload"]:
-            continue
+    rows = [r for r in registry.assets(v, kind) if r["wm_payload"]]
+    if kind == "image" and any(r["wm_backend"] == wm_trustmark.BACKEND for r in rows):
+        hits += [{"registered": r["name"], "record": f"{r['record_id']:010x}", **m}
+                 for r, m in wm_trustmark.matches(Image.open(path), v.mac_key(), rows)]
+    for r in rows:
         p = int(r["wm_payload"], 16)
+        if r["wm_backend"] == wm_trustmark.BACKEND:
+            continue
         if kind == "image":
             m = wm_image.match_array(wm_image.load_rgb(path)[0], p, np.load(v.path(r["ref_path"])).astype(np.float32))
         elif kind == "audio":

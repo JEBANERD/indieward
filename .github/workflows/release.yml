@@ -48,7 +48,7 @@ jobs:
           python scripts/release_notes.py "$tag" > release-notes.md
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-      - run: python -m pip install -e ".[dev]"
+      - run: python -m pip install -e ".[mcp,dev]" # same extras as ci.yml, so the MCP tests run
       - run: python -m pytest -q
       - name: Build sdist and wheel
         run: |

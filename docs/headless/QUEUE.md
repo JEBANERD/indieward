@@ -35,4 +35,5 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-17 | MCP tools for `watch` and `traps inject` (plan, then apply with a confirm code) | 2 | done | P4-01 | M |
 | P2-18 | More libraries in the common-material index (Babylon, React, Vue, jQuery, Kaboom, Excalibur) | 2 | done | P2-08 | M |
 | P2-19 | Detect bundled libraries by their unique fingerprints (stops generic-overlap false matches) | 2 | done | P2-18 | S |
+| P2-20 | Recognise a library from any one of its build files (Vue's production build is missed) | 2 | todo | P2-19 | M |
 | P1-04 | Dogfood on one of Jasper's real games (deferred: no test game yet) | 1 | needs-jasper | P1-03 | – |

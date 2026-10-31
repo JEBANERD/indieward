@@ -1,7 +1,7 @@
 """`indieward doctor`: is this machine ready to run IndieWard?
 
 Checks Python, FFmpeg, OpenSSL (with `openssl ts`), the optional OpenTimestamps
-client and MCP package, and that the vault folder is writable. Each problem
+client, MCP package and TrustMark image backend, and that the vault folder is writable. Each problem
 comes with one command to fix it for this OS. Nothing is installed for you.
 """
 from __future__ import annotations
@@ -32,6 +32,7 @@ FIXES = {
                 "linux": "sudo apt install openssl"},
     "ots": {"any": "pipx inject --include-apps indieward opentimestamps-client  (or: pip install opentimestamps-client)"},
     "mcp": {"any": "pipx install --force \"indieward[mcp]\"  (or: pip install \"indieward[mcp]\")"},
+    "trustmark": {"any": "pipx inject indieward trustmark  (or: pip install \"indieward[trustmark]\"; pulls in PyTorch)"},
 }
 
 
@@ -94,6 +95,21 @@ def check_mcp() -> dict:
                  needed=False)
 
 
+def check_trustmark() -> dict:
+    """Optional image backend. Looks for the package and its model files without importing PyTorch."""
+    from .wm_trustmark import MODEL_TYPE
+
+    spec = importlib.util.find_spec("trustmark")
+    if spec is None:
+        return _item("trustmark", False, "not installed (optional: `register --backend trustmark`)", needed=False)
+    locs = list(getattr(spec, "submodule_search_locations", None) or [])
+    models = Path(locs[0], "models") if locs else None
+    have = models is not None and all((models / f"{part}_{MODEL_TYPE}.ckpt").is_file() for part in ("encoder", "decoder"))
+    detail = ("installed, models downloaded" if have else
+              "installed; models download once from cai-watermark.adobe.net on first use")
+    return _item("trustmark", True, detail, needed=False)
+
+
 def check_vault(project=".") -> dict:
     root = Path(project).resolve()
     vault = next((c / VAULT_DIR for c in (root, *root.parents) if (c / VAULT_DIR / "vault.db").exists()), None)
@@ -111,7 +127,8 @@ def check_vault(project=".") -> dict:
 
 
 def run(project=".") -> dict:
-    checks = [check_python(), *check_ffmpeg(), check_openssl(), check_ots(), check_mcp(), check_vault(project)]
+    checks = [check_python(), *check_ffmpeg(), check_openssl(), check_ots(), check_mcp(), check_trustmark(),
+              check_vault(project)]
     return {"ok": all(c["ok"] for c in checks if c["needed"]), "platform": _platform(), "checks": checks}
 
 
@@ -119,7 +136,7 @@ def format_report(res: dict) -> str:
     lines = []
     for c in res["checks"]:
         tag = "ok  " if c["ok"] else ("FIX " if c["needed"] else "opt ")
-        lines.append(f"{tag} {c['name']:<8} {c['detail']}")
+        lines.append(f"{tag} {c['name']:<9} {c['detail']}")
         if c["fix"]:
             lines.append(f"     -> {c['fix']}")
     lines.append("")

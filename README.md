@@ -3,7 +3,7 @@
 Free, open-source anti-clone toolkit for indie game developers. It runs on your own machine and never sends anything for you.
 
 - **Prove you had it first:** register art, audio, video, code, story text and builds. Each gets a SHA-256 hash in a certificate signed with your key and timestamped by two independent services (an RFC 3161 authority, and OpenTimestamps, which anchors in Bitcoin once you upgrade the proof with the official `ots` client).
-- **Mark what you publish:** invisible watermarks for images, audio and video (IW-Mark v1, an open format; each mark carries an ID plus a MAC only your key can produce). Visible burn-in marks and low-res previews for footage.
+- **Mark what you publish:** invisible watermarks for images, audio and video (IW-Mark v1, an open format; each mark carries an ID plus a MAC only your key can produce). Optional [TrustMark](https://github.com/adobe/trustmark) image backend (`pip install "indieward[trustmark]"`, then `register --backend trustmark`) so others can read the ID without your vault. Visible burn-in marks and low-res previews for footage.
 - **Trap markers in builds:** inert made-up strings, constants, a dead function and a tiny hidden image, recorded privately. Finding one inside a suspect's files is near-proof they ripped your build, even with redrawn art.
 - **Check a suspect:** traps, watermarks, and fingerprints (code winnowing, perceptual image hashes, audio landmarks, text matching, video frames) produce a 0-100 score per category, each labeled **Strong**, **Supporting** or **Weak** as a basis for filing, with matches shown side by side.
 - **Takedown package:** signed certificate, evidence, a pre-filled DMCA (or trademark) notice, and a pre-addressed `.eml` draft plus checklist for Steam, itch.io and Roblox. **You** review and send it.
@@ -147,4 +147,4 @@ All code is open source (MIT). What stays private is each creator's own data on 
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Forks are welcome; the IndieWard name is reserved for builds that keep its safety rules (see [TRADEMARKS.md](TRADEMARKS.md)).

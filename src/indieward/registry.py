@@ -8,12 +8,13 @@ from pathlib import Path
 import numpy as np
 
 from . import fp_audio, fp_code, fp_image, fp_text, fp_video, mediaio, payload as pl, traps, util
-from . import wm_audio, wm_image, wm_video
+from . import wm_audio, wm_image, wm_trustmark, wm_video
 from .vault import Vault
 
 DEFAULT_CATEGORY = {"image": "art", "audio": "audio", "video": "video", "code": "code", "text": "text",
                     "other": "other"}
 CATEGORIES = ("art", "ui", "logo", "audio", "video", "code", "text", "other")
+IMAGE_BACKENDS = ("builtin", "trustmark")
 
 
 def _save_json(path: Path, obj) -> None:
@@ -21,8 +22,10 @@ def _save_json(path: Path, obj) -> None:
 
 
 def register_file(vault: Vault, path, category: str | None = None, watermark: bool = True,
-                  out_dir=None, keep_copy: bool = False, note: str | None = None) -> dict:
+                  out_dir=None, keep_copy: bool = False, note: str | None = None, backend: str = "builtin") -> dict:
     vault.require_verified("register assets")
+    if backend not in IMAGE_BACKENDS:
+        raise ValueError(f"image backend must be one of {', '.join(IMAGE_BACKENDS)}")
     path = Path(path)
     kind = util.kind_for(path)
     category = category or DEFAULT_CATEGORY[kind]
@@ -39,12 +42,17 @@ def register_file(vault: Vault, path, category: str | None = None, watermark: bo
     out_dir = Path(out_dir) if out_dir else vault.project_root / "indieward_out"
     info: dict = {}
     wm_out = ref_path = None
-    backend = None
+    image_backend, backend = backend, None
     fp: dict = {}
 
     if kind == "image":
         fp = fp_image.fingerprint_file(path)
-        if watermark:
+        if watermark and image_backend == "trustmark":
+            out_dir.mkdir(parents=True, exist_ok=True)
+            wm_out = out_dir / path.name
+            info = wm_trustmark.embed_file(path, wm_out, payload)
+            backend = wm_trustmark.BACKEND
+        elif watermark:
             out_dir.mkdir(parents=True, exist_ok=True)
             wm_out = out_dir / path.name
             info, ref = wm_image.embed_file(path, wm_out, payload)
@@ -95,7 +103,7 @@ def register_file(vault: Vault, path, category: str | None = None, watermark: bo
 
 
 def register_path(vault: Vault, path, category: str | None = None, watermark: bool = True, out_dir=None,
-                  keep_copy: bool = False) -> list[dict]:
+                  keep_copy: bool = False, backend: str = "builtin") -> list[dict]:
     vault.require_verified("register assets")
     path = Path(path)
     results = []
@@ -103,7 +111,7 @@ def register_path(vault: Vault, path, category: str | None = None, watermark: bo
         if util.kind_for(p) == "other":
             continue
         try:
-            results.append(register_file(vault, p, category, watermark, out_dir, keep_copy))
+            results.append(register_file(vault, p, category, watermark, out_dir, keep_copy, backend=backend))
         except ValueError as e:  # e.g. too small to watermark: register without a mark
             if watermark:
                 r = register_file(vault, p, category, False, out_dir, keep_copy)

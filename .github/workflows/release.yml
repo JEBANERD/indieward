@@ -1,0 +1,123 @@
+name: release
+
+# Push a tag vX.Y.Z (matching pyproject.toml and a CHANGELOG.md section) to:
+#   1. run the tests, build the sdist + wheel, and write a CycloneDX SBOM of a clean install;
+#   2. attest every artifact's build provenance (Sigstore, via GitHub artifact attestations);
+#   3. create the GitHub release with the artifacts, the SBOM and the changelog section;
+#   4. publish to PyPI with trusted publishing, only once the repo variable PYPI_PUBLISH is "true".
+# Pull requests that touch release files run step 1 only, as a dry run. Nothing is published
+# from a branch push. Setup and verification: docs/releasing.md.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "pyproject.toml"
+      - "CHANGELOG.md"
+      - "scripts/release_notes.py"
+  workflow_dispatch: # dry run (build only) from any branch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build, test, SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tag, version and changelog agree
+        id: tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          fi
+          python scripts/release_notes.py "$tag" > release-notes.md
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: python -m pip install -e ".[mcp,dev]" # same extras as ci.yml, so the MCP tests run
+      - run: python -m pytest -q
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install build
+          python -m build --outdir dist
+      - name: Install the wheel in a clean venv and smoke-test it
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install dist/*.whl
+          /tmp/clean/bin/indieward --help > /dev/null
+          /tmp/clean/bin/indieward doctor || true  # informational: the runner may lack optional tools
+      - name: SBOM (CycloneDX) of the clean install
+        run: |
+          python -m pip install "cyclonedx-bom>=7,<8"
+          mkdir -p sbom
+          cyclonedx-py environment --of JSON --output-reproducible \
+            -o "sbom/indieward-${{ steps.tag.outputs.tag }}.cdx.json" /tmp/clean/bin/python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            dist/
+            sbom/
+            release-notes.md
+          if-no-files-found: error
+
+  release:
+    name: attest + GitHub release
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the release
+      id-token: write # Sigstore signing for attestations
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*
+            sbom/*
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          gh release create "$TAG" dist/* sbom/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "IndieWard ${TAG#v}" --notes-file release-notes.md
+
+  pypi:
+    name: publish to PyPI
+    needs: [build, release]
+    # Off until Jasper registers the trusted publisher on PyPI and sets PYPI_PUBLISH=true.
+    if: github.ref_type == 'tag' && vars.PYPI_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi
+      url: https://pypi.org/project/indieward/
+    permissions:
+      id-token: write # trusted publishing; no API token stored anywhere
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

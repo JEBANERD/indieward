@@ -59,6 +59,19 @@ Meta's own figures for v1.0 are much better: 98% bit accuracy at H.264 CRF 30, 9
 
 The built-in mark's "half size" failure comes from how small the result is, not from downscaling as such. Halved from 640×360, the clip ends up 320×180, and at CRF 28 that loses the mark. The same clip at CRF 18 keeps it (3/3). From 1280×720, every downscale we tried kept it, down to 426×240 at CRF 23 and 640×360 at CRF 28 (3/3 each, z 13–25 against a threshold of 7).
 
+### Built-in video mark: other codecs
+
+The built-in docs claimed the mark survives H.265 and VP9, so we re-tested it on 3 clips per row. Each clip was marked, then re-encoded. Detection needs z ≥ 7; bitrates are averages over the 10 s clips.
+
+| Clip | Re-encode | Kept | z | Bitrate |
+| --- | --- | --- | --- | --- |
+| 1280×720 | H.265 CRF 24 / 28 / 32 | 3/3 / 3/3 / 3/3 | 18–26 / 13–20 / 8–15 | ~490 / 280 / 180 kbps |
+| 1280×720 | VP9 CRF 31 / 40 | 3/3 / 3/3 | 22–30 / 15–23 | ~660 / 300 kbps |
+| 640×360 | H.265 CRF 24 / 28 / 32 | 3/3 / 1/3 / 0/3 | 7–13 / 4–9 / 2–5 | ~230 / 140 / 95 kbps |
+| 640×360 | VP9 CRF 31 / 40 | 3/3 / 1/3 | 10–14 / 4–9 | ~310 / 160 kbps |
+
+At 720p, both codecs keep the mark at every quality tested. At 360p, heavy compression removes it: H.265 at its default CRF 28 already lost it in 2 of 3 clips. The built-in docs now say this.
+
 ## What would change this
 
 - **Video:** a test on two or three real trailers at 1080p, ideally from the P1-04 dogfood game. Use a real error-correcting code over the 256 bits (for example BCH carrying the 64-bit payload) instead of 4× repetition; 85% bit accuracy may then be enough. If it then holds the payload through CRF 28–30, half size and a 10% crop, a `video --backend videoseal` extra would earn its install weight. Raising the strength above 0.2 is untested and would cost quality.

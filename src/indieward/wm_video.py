@@ -9,11 +9,13 @@ Static backgrounds and UI cancel out in that correlation; what's left is the
 mark plus noise that averages away over seconds of footage. No reference file
 is needed, so this check also works on clips cut from a longer video.
 
-Survives: H.264/H.265/VP9 re-encodes, downscaling to 240p or larger (tested
-720p to 480p, 360p and 240p), frame-rate changes, trimming, platform
-transcodes. Defeated by: very small copies that are also heavily compressed
-(320x180 at H.264 CRF 28 lost it; 320x180 at CRF 18 kept it), cropping
-more than a few percent, mirroring, heavy overlays, speed changes, screen
+Survives: H.264, H.265 and VP9 re-encodes of 720p copies (tested down to
+about 180 kbps: H.265 CRF 32, VP9 CRF 40), downscaling to 240p or larger
+(tested 720p to 480p, 360p and 240p), frame-rate changes, trimming.
+Defeated by: small copies that are also heavily compressed. At 360p, H.265
+at its default CRF 28 and VP9 at CRF 40 lost it in 2 of 3 test clips
+(H.265 CRF 24, VP9 CRF 31 and H.264 CRF 28 kept it); at 320x180, H.264
+CRF 28 lost it. Also defeated by cropping more than a few percent, mirroring, heavy overlays, speed changes, screen
 recording at an angle, AI re-generation, and targeted removal. Meta's Video
 Seal was tested as an alternative; it isn't proven on game footage yet
 (docs/research/neural-backends.md).

@@ -35,3 +35,4 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-16 | `traps inject` for Godot `.tres` translations and Unity Localization string tables | 2 | needs-jasper | P2-09 | M |
 | P2-17 | MCP tools for `watch` and `traps inject` (plan, then apply with a confirm code) | 2 | done | P4-01 | M |
 | P2-18 | More libraries in the common-material index (Babylon, React, Vue, jQuery, Kaboom, Excalibur) | 2 | done | P2-08 | M |
+| P2-19 | Detect bundled libraries by their unique fingerprints (stops generic-overlap false matches) | 2 | todo | P2-18 | S |

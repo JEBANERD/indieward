@@ -10,7 +10,8 @@ import pytest
 
 from indieward import common_index, fp_code, fp_text
 
-LIBS = {"three", "phaser", "pixi.js", "howler", "matter-js", "lodash"}
+LIBS = {"three", "phaser", "pixi.js", "howler", "matter-js", "lodash",
+        "babylonjs", "react", "react-dom", "vue", "jquery", "kaboom", "excalibur"}
 
 
 def _fake_js(seed: int, n: int = 400) -> str:
@@ -30,6 +31,7 @@ def _fps(*texts: str) -> dict:
 
 
 def test_shipped_index_has_fingerprints_and_licences_only():
+    assert common_index.DATA.stat().st_size < 4 * 1024 * 1024  # size budget (P2-18)
     raw = json.loads(common_index.DATA.read_text(encoding="utf-8"))
     assert {lib["name"] for lib in raw["libraries"]} == LIBS
     for lib in raw["libraries"]:

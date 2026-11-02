@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -35,8 +36,12 @@ def test_mcp_tool_refuses_unverified(tmp_path):
 
 
 def _hook(args, event):
+    # Keep the whole environment (Windows needs SYSTEMROOT to start Python); only prepend our src.
+    src = str(ROOT / "src")
+    old = os.environ.get("PYTHONPATH")
+    env = {**os.environ, "PYTHONPATH": src + os.pathsep + old if old else src}
     p = subprocess.run([sys.executable, "-m", "indieward.hooks", *args], input=json.dumps(event),
-                       capture_output=True, text=True, cwd=ROOT, env={"PYTHONPATH": str(ROOT / "src")})
+                       capture_output=True, text=True, cwd=ROOT, env=env)
     return p.returncode, p.stdout, p.stderr
 
 

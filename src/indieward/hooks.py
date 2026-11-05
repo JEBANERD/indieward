@@ -64,7 +64,9 @@ def block_send(event: dict) -> tuple[int, str]:
 # The vault's evidence: keys, the database (plus its -journal/-wal files), certificates, or the folder itself.
 VAULT_PATH = re.compile(r"(?i)\.indieward(?:[\\/]+(?:keys|certs|vault\.db)\b|[\\/]*\*?(?=$|[\s'\"`;|&),]))")
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-SEGMENT = re.compile(r"&&|\|\||[;|\n]")
+# `&&`, `||`, `;`, `|`, newline, and a single `&` (cmd.exe separator) that follows a command: not PowerShell's
+# call operator at the start of a segment, and not part of `2>&1` or `&>`.
+SEGMENT = re.compile(r"&&|\|\||(?<=[^\s&>])\s*&(?![>&])|[;|\n]")
 # Wrappers stripped from the front of each command: sudo, quotes, `bash -c`, `cmd /c`, `powershell -Command`.
 WRAPPER = re.compile(r"(?i)^(?:sudo\s+|['\"(]\s*|(?:bash|sh|zsh|cmd|pwsh|powershell)(?:\.exe)?\s+(?:-\w+\s+)*?"
                      r"(?:-c|/c|-command)\s+)*")
@@ -90,6 +92,41 @@ GIT_WIPE_MSG = ("IndieWard: .indieward/ is gitignored, so `git clean -x`/`-X` or
                 "(keys, vault.db, certs). Use `git clean -fd`, add `-e .indieward` to `-x`, or run it yourself.")
 
 
+# Commands that just run the next command: `env FOO=1 git ...`, `time git ...`. PowerShell's `&` is handled apart.
+PREFIX_CMDS = {"env", "command", "builtin", "exec", "time", "nice", "nohup", "xargs"}
+FIRST_WORD = re.compile(r"^(?:\"([^\"]*)\"|'([^']*)'|(\S+))\s*(.*)$", re.S)
+
+
+def _program(word: str) -> str:
+    """`C:\\Git\\cmd\\git.exe` and `/usr/bin/GIT` both become `git`."""
+    base = re.split(r"[\\/]", word.strip())[-1].lower()
+    return base[:-4] if base.endswith(".exe") else base
+
+
+def _normalize(seg: str) -> str:
+    """Strip a leading `&` and prefix commands, and reduce the program to its bare name (best effort)."""
+    seg = WRAPPER.sub("", seg.strip())
+    for _ in range(8):
+        seg = seg.lstrip()
+        if seg.startswith("&"):
+            seg = seg[1:].lstrip()
+            continue
+        m = FIRST_WORD.match(seg)
+        if not m:
+            return seg
+        word, rest = next(g for g in m.groups()[:3] if g is not None), m.group(4)
+        prog = _program(word)
+        if prog not in PREFIX_CMDS:
+            return f"{prog} {rest}".strip() if prog else seg
+        while True:  # options and, for env, VAR=value words belong to the prefix
+            m2 = re.match(r"^(-\S+(?:\s+\d+)?|[A-Za-z_]\w*=\S*)\s*(.*)$", rest, re.S)
+            if not m2 or (prog != "env" and not m2.group(1).startswith("-")):
+                break
+            rest = m2.group(2)
+        seg = rest
+    return seg
+
+
 def _copy_destinations(args: list[str]) -> list[str]:
     """The last argument, plus any -t / --target-directory / -Destination value."""
     dests = [args[-1].strip("'\"")]
@@ -108,20 +145,35 @@ def _short_flags(args: list[str]) -> str:
     return "".join(a[1:] for a in args if a.startswith("-") and not a.startswith("--"))
 
 
-def _wipes_ignored(seg: str) -> bool:
-    """git clean -x/-X and git stash --all remove gitignored files, and .indieward/ is gitignored."""
+def _wipes_ignored(seg: str, root_vault_only: bool = False) -> bool:
+    """git clean -x/-X and git stash --all remove gitignored files, and .indieward/ is gitignored.
+
+    root_vault_only: the only vault is at the repo root, so an anchored `-e /.indieward` really protects it."""
+    seg = _normalize(seg)
     try:
         args = shlex.split(seg)  # keep quoted paths with spaces whole: git -C "my game" clean -fdx
     except ValueError:
         args = seg.split()
-    if not args or args[0].lower() not in ("git", "git.exe"):
+    if not args or _program(args[0]) != "git":
         return False
-    i = 1
+    i, aliases = 1, {}
     while i < len(args) and args[i].startswith("-"):  # global options: -C <dir>, -c <key=value>
+        if args[i] == "-c" and i + 1 < len(args):
+            key, _, val = args[i + 1].partition("=")
+            if key.lower().startswith("alias."):  # git -c alias.c=clean c -fdx
+                aliases[key[6:].lower()] = val
         i += 2 if args[i] in ("-C", "-c") else 1
     if i >= len(args):
         return False
     sub, rest = args[i], args[i + 1:]
+    if sub.lower() in aliases:  # only aliases defined inline; ones in git config are out of scope
+        try:
+            expanded = shlex.split(aliases[sub.lower()])
+        except ValueError:
+            expanded = aliases[sub.lower()].split()
+        if not expanded or expanded[0].startswith("!"):
+            return False
+        sub, rest = expanded[0], expanded[1:] + rest
     if sub == "clean":
         opts, excludes, j = [], [], 0
         while j < len(rest):
@@ -147,7 +199,11 @@ def _wipes_ignored(seg: str) -> bool:
         flags = _short_flags(opts)
         if "X" in flags:
             return True  # -e only adds ignore rules here, so it can't protect the vault
-        return "x" in flags and not any(re.fullmatch(r"(?:\./|/)?\.indieward[\\/]?\*?", e.strip("'\"")) for e in excludes)
+        if "x" not in flags:
+            return False
+        # `.indieward` matches at any depth; `/.indieward` or `./.indieward` only the repo root's.
+        pattern = r"(?:\./|/)?\.indieward[\\/]?\*?" if root_vault_only else r"\.indieward[\\/]?\*?"
+        return not any(re.fullmatch(pattern, e.strip("'\"")) for e in excludes)
     if sub == "stash":
         if rest and not rest[0].startswith("-") and rest[0] not in ("push", "save"):
             return False  # list, show, apply, pop, drop, ...
@@ -167,7 +223,7 @@ def _touches_vault(cmd: str) -> bool:
         return True
     inside = False
     for seg in SEGMENT.split(cmd):
-        seg = WRAPPER.sub("", seg.strip())
+        seg = _normalize(seg)
         if CD_VAULT.match(seg):
             inside = True
             continue
@@ -191,29 +247,39 @@ CHANGES_DIR = re.compile(r"(?i)(?:^|[\s;&|(])(?:cd|pushd|set-location|sl|chdir)\
 SKIP_DIRS = {".git", "node_modules", "Library", "Intermediate", "DerivedDataCache", "Saved", ".godot"}
 
 
-def _vault_in_repo(cwd) -> bool:
-    """Could a git command run in cwd reach a vault? Looks in the enclosing repo, up to 3 levels down.
-
-    Unknown or missing cwd counts as yes, so the hook only relaxes when it can see there's no vault."""
+def _vaults_in_repo(cwd):
+    """(repo top, every .indieward found in the enclosing repo, up to 3 levels down), or None when cwd is unknown."""
     if not cwd or not Path(cwd).is_dir():
-        return True
+        return None
     start = Path(cwd).resolve()
     top = next((p for p in (start, *start.parents) if (p / ".git").exists()), start)
-    if any((p / ".indieward").is_dir() for p in (start, *start.parents) if p == top or top in p.parents):
-        return True
+    found = [p / ".indieward" for p in (start, *start.parents)
+             if (p == top or top in p.parents) and (p / ".indieward").is_dir()]
     stack = [(top, 0)]
     while stack:
         d, depth = stack.pop()
         try:
             subdirs = [e for e in d.iterdir() if e.is_dir() and not e.is_symlink()]
         except OSError:
-            return True
+            return None
         for e in subdirs:
             if e.name == ".indieward":
-                return True
-            if depth < 3 and e.name not in SKIP_DIRS:
+                found.append(e)
+            elif depth < 3 and e.name not in SKIP_DIRS:
                 stack.append((e, depth + 1))
-    return False
+    return top, found
+
+
+def _vault_in_repo(cwd) -> bool:
+    """Could a git command run in cwd reach a vault? Unknown or missing cwd counts as yes, so the hook only
+    relaxes when it can see there's no vault."""
+    seen = _vaults_in_repo(cwd)
+    return seen is None or bool(seen[1])
+
+
+def _vault_only_at_root(cwd) -> bool:
+    seen = _vaults_in_repo(cwd)
+    return seen is not None and bool(seen[1]) and all(v.resolve() == (seen[0] / ".indieward").resolve() for v in seen[1])
 
 
 def protect_vault(event: dict) -> tuple[int, str]:
@@ -225,7 +291,8 @@ def protect_vault(event: dict) -> tuple[int, str]:
         return (2, VAULT_MSG) if VAULT_PATH.search(path) else (0, "")
     if tool in SHELL_TOOLS:
         cmd = str(inp.get("command", ""))
-        if any(_wipes_ignored(WRAPPER.sub("", seg.strip())) for seg in SEGMENT.split(cmd)):
+        root_only = not CHANGES_DIR.search(cmd) and _vault_only_at_root(event.get("cwd"))
+        if any(_wipes_ignored(seg, root_only) for seg in SEGMENT.split(cmd)):
             # The plugin runs in every repo; don't block routine cleanups where no vault can be hit.
             # A cd or `git -C` may point at another repo, so then we don't relax.
             if CHANGES_DIR.search(cmd) or _vault_in_repo(event.get("cwd")):

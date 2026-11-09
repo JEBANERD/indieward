@@ -162,6 +162,19 @@ def test_vault_hook_allows_reads_own_tools_and_other_edits(tool, inp):
     ("Bash", "git stash --all"),
     ("Bash", "git stash push -a"),
     ("PowerShell", "git clean -fdx"),
+    ("PowerShell", "& git clean -fdx"),
+    ("PowerShell", '& "C:\\Program Files\\Git\\cmd\\git.exe" clean -fdx'),
+    ("Bash", "/usr/bin/git clean -fdx"),
+    ("Bash", "env git clean -fdx"),
+    ("Bash", "env FOO=1 git clean -fdx"),
+    ("Bash", "command git clean -fdx"),
+    ("Bash", "time git clean -fdx"),
+    ("Bash", "nice git clean -fdx"),
+    ("Bash", "nice -n 5 git clean -fdx"),
+    ("Bash", "git -c alias.c=clean c -fdx"),
+    ("Bash", "git -c alias.s='stash --all' s"),
+    ("Bash", "echo hi & git clean -fdx"),
+    ("Bash", "git clean -fdx -e /.indieward"),  # no cwd: can't see that the vault is at the root
 ])
 def test_vault_hook_blocks_wiping_ignored_files(tool, cmd):
     code, _, err = _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"command": cmd}})
@@ -181,6 +194,9 @@ def test_vault_hook_blocks_wiping_ignored_files(tool, cmd):
     "git stash push -m 'add all'",
     "git stash apply",
     "git status --ignored",
+    "& git clean -fd",
+    "/usr/bin/git status --ignored",
+    "env FOO=1 git stash",
 ])
 def test_vault_hook_allows_safe_git(cmd):
     assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 0
@@ -209,6 +225,35 @@ def test_wipe_blocked_when_the_repo_holds_a_vault(repo_with_vault):
     assert _git_hook("git clean -fdx", repo_with_vault) == 2
     assert _git_hook("git clean -fdx", repo_with_vault / "tools") == 2  # vault elsewhere in the same repo
     assert _git_hook("git stash -a", repo_with_vault / "game") == 2
+
+
+def test_root_exclude_only_protects_a_root_vault(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".indieward").mkdir()
+    assert _git_hook("git clean -fdx -e /.indieward", tmp_path) == 0
+    assert _git_hook("cd x && git clean -fdx -e /.indieward", tmp_path) == 2
+    (tmp_path / "game" / ".indieward").mkdir(parents=True)
+    assert _git_hook("git clean -fdx -e /.indieward", tmp_path) == 2  # subfolder vault isn't excluded
+    assert _git_hook("git clean -fdx -e .indieward", tmp_path) == 0  # unanchored pattern matches at any depth
+
+
+@pytest.mark.parametrize("tool,cmd", [
+    ("PowerShell", "& rm .indieward\\vault.db"),
+    ("PowerShell", '& "C:\\Windows\\System32\\cmd.exe" /c del .indieward\\vault.db'),
+    ("Bash", "/bin/rm -rf .indieward/keys"),
+    ("Bash", "env rm .indieward/vault.db"),
+    ("Bash", "sudo env FOO=1 /usr/bin/mv .indieward/keys /tmp/x"),
+    ("Bash", "echo hi & rm .indieward/vault.db"),
+    ("PowerShell", "& Remove-Item -Recurse .indieward\\keys"),
+])
+def test_vault_hook_blocks_prefixed_deletes(tool, cmd):
+    code, _, err = _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"command": cmd}})
+    assert code == 2 and "vault" in err
+
+
+def test_vault_hook_allows_prefixed_reads():
+    for cmd in ("& cat .indieward/certs/c.json", "env FOO=1 ls .indieward/keys", "/bin/ls .indieward", "make 2>&1 | tee build.log"):
+        assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 0, cmd
 
 
 def test_wipe_blocked_when_the_command_changes_directory(tmp_path):

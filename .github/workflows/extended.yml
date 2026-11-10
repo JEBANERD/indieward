@@ -1,0 +1,35 @@
+name: extended
+
+# Tests the default CI run deselects (P1-05): the `slow` benchmarks (P2-07's 2,000 x 2,000 image
+# matrix in under 10 s) and the real three.js common-index case (P2-08). Weekly, or by hand.
+on:
+  schedule:
+    - cron: "41 8 * * 1" # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Same version the common index fingerprints (scripts/build_common.py). sha512 from the npm registry.
+      THREE_VERSION: "0.187.0"
+      THREE_SHA512: "Qiu7R+Cmh8CstZsY1uJOSWnVlfo7ZtNLV7mF8Jltk3LB3AtDu9cRZlcnRKkAk8Y4z6KKw35z7Y7Urd7jWY8etA=="
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: python -m pip install -e ".[mcp,dev]"
+      - run: python -m pytest -q -rs -m slow
+      - name: Pinned three.js, integrity-checked
+        run: |
+          curl -fsSL -o three.tgz "https://registry.npmjs.org/three/-/three-${THREE_VERSION}.tgz"
+          got="$(openssl dgst -sha512 -binary three.tgz | base64 -w0)"
+          [ "$got" = "$THREE_SHA512" ] || { echo "three.js tarball integrity mismatch: $got"; exit 1; }
+          mkdir -p three && tar -xzf three.tgz -C three
+          echo "INDIEWARD_THREE_JS=$PWD/three/package/build/three.module.js" >> "$GITHUB_ENV"
+      - run: python -m pytest -q -rs tests/test_common_index.py -k three

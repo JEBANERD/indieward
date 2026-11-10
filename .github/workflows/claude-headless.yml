@@ -46,6 +46,17 @@ jobs:
           git checkout -b "headless/run-${{ github.run_id }}"
           mkdir -p .headless
 
+      # A card stays `todo` on main until Jasper merges its PR, so without this the next run picks it again
+      # (P2-23 got five identical PRs, #52-#56). RUNNER.md tells the worker to skip the cards listed here.
+      - name: Cards already waiting in an open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --state open --limit 100 --json title,headRefName \
+            --jq '.[] | select(.headRefName | startswith("headless/")) | .title' \
+            | grep -oE '^P[0-9]+-[0-9]+' | sort -u > .headless/OPEN_PRS.txt || true
+          echo "Cards with an open headless PR:"; cat .headless/OPEN_PRS.txt
+
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

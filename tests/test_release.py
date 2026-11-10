@@ -36,10 +36,17 @@ def test_notes_are_just_that_versions_section(tmp_path):
     assert notes == "### Added\n- a feature"
 
 
-@pytest.mark.parametrize("tag", ["1.2.0", "v1.2", "v1.1.0", "v1.2.0-rc1"])
+@pytest.mark.parametrize("tag", ["1.2.0", "v1.2", "v1.1.0", "v1.1.0-rc1", "v1.2.0-rc", "v1.2.0-rc0", "v1.2.0-beta1",
+                                 "v1.2.0-rc1x"])
 def test_tag_must_match_pyproject(tmp_path, tag):
     with pytest.raises(ValueError, match="doesn't match"):
         rn.notes_for(tag, _repo(tmp_path))
+
+
+def test_release_candidate_tags_use_the_versions_section(tmp_path):
+    assert rn.notes_for("v1.2.0-rc1", _repo(tmp_path)) == "### Added\n- a feature"
+    assert rn.is_prerelease("v1.2.0-rc12", "1.2.0")
+    assert not rn.is_prerelease("v1.2.0", "1.2.0")
 
 
 def test_missing_or_empty_section_stops_the_release(tmp_path):
@@ -72,3 +79,5 @@ def test_workflow_publishes_only_from_tags_and_only_when_enabled():
     assert "environment:" in pypi and "name: pypi" in pypi
     assert "password" not in pypi and "secrets." not in wf  # trusted publishing, no stored token
     assert "actions/attest-build-provenance" in release and "cyclonedx-py" in wf
+    assert "--prerelease" in release  # rc tags become GitHub pre-releases
+    assert "!contains(github.ref_name, '-')" in pypi  # and never reach PyPI

@@ -162,6 +162,21 @@ def test_vault_hook_allows_reads_own_tools_and_other_edits(tool, inp):
     ("Bash", "git stash --all"),
     ("Bash", "git stash push -a"),
     ("PowerShell", "git clean -fdx"),
+    ("PowerShell", "& git clean -fdx"),
+    ("PowerShell", '& "C:\\Program Files\\Git\\cmd\\git.exe" clean -fdx'),
+    ("PowerShell", "C:\\Git\\cmd\\git.exe clean -fdx"),
+    ("Bash", "/usr/bin/git clean -fdx"),
+    ("Bash", "env git clean -fdx"),
+    ("Bash", "env FOO=1 git clean -fdx"),
+    ("Bash", "command git clean -fdx"),
+    ("Bash", "time git clean -fdx"),
+    ("Bash", "nice git clean -fdx"),
+    ("Bash", "nice -n 10 git clean -fdx"),
+    ("Bash", "nohup git stash --all"),
+    ("Bash", "echo . | xargs git clean -fdx"),
+    ("Bash", "git -c alias.c=clean c -fdx"),
+    ("Bash", "git -c 'alias.s=stash --all' s"),
+    ("Bash", "sudo env /usr/bin/git clean -fdx"),
 ])
 def test_vault_hook_blocks_wiping_ignored_files(tool, cmd):
     code, _, err = _hook(["protect-vault"], {"tool_name": tool, "tool_input": {"command": cmd}})
@@ -181,8 +196,30 @@ def test_vault_hook_blocks_wiping_ignored_files(tool, cmd):
     "git stash push -m 'add all'",
     "git stash apply",
     "git status --ignored",
+    "& git clean -fd",
+    "/usr/bin/git status --ignored",
+    "env FOO=1 git stash",
+    "git -c alias.c=clean c -fd",
+    "git -c alias.c=clean c -ndx",
 ])
 def test_vault_hook_allows_safe_git(cmd):
+    assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 0
+
+
+@pytest.mark.parametrize("cmd", [
+    "& rm -rf .indieward",
+    "/bin/rm -rf .indieward/keys",
+    "env rm -rf .indieward/vault.db",
+    "sudo /usr/bin/rm -f .indieward/keys/a",
+    '& "C:\\Windows\\System32\\cmd.exe" /c del .indieward\\vault.db',
+    "command mv .indieward/vault.db /tmp",
+])
+def test_vault_hook_blocks_prefixed_deletes(cmd):
+    assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 2
+
+
+@pytest.mark.parametrize("cmd", ["& ls .indieward", "env cat .indieward/vault.db", "/bin/cp .indieward/vault.db /tmp/b"])
+def test_vault_hook_allows_prefixed_reads(cmd):
     assert _hook(["protect-vault"], {"tool_name": "Bash", "tool_input": {"command": cmd}})[0] == 0
 
 
@@ -259,3 +296,15 @@ def test_mcp_copyright_notice_options(tmp_path):
         "project_dir": str(tmp_path), "licence": "MIT", "year": 2024, "holder": "Jo Doe"})))
     assert out["credits"] == "Lantern Moth © 2024 Jo Doe. Licensed under MIT (see LICENSE)."
     assert "SPDX-License-Identifier: MIT" in out["spdx"]["lines"]
+
+
+def test_root_anchored_exclude_only_protects_a_root_vault(tmp_path, repo_with_vault):
+    cmd = "git clean -fdx -e /.indieward"
+    assert _git_hook(cmd, repo_with_vault) == 2  # vault is in game/, which /.indieward doesn't cover
+    (tmp_path / ".git").mkdir(exist_ok=True)
+    root = tmp_path / "other"
+    (root / ".git").mkdir(parents=True)
+    (root / ".indieward").mkdir()
+    assert _git_hook(cmd, root) == 0
+    assert _git_hook("git clean -fdx -e .indieward", root) == 0
+    assert _git_hook(cmd, root / ".indieward") == 2  # not the repo root

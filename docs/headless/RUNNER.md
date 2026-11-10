@@ -4,10 +4,10 @@ You are working on IndieWard unattended, in a GitHub Actions runner. Nobody can 
 
 ## 1. Pick one card
 1. Open `docs/headless/QUEUE.md`.
-2. If a card id was given, work that card. Otherwise take the first row whose status is `todo` and whose dependencies are all `done`.
-3. Skip `needs-jasper`, `blocked`, `in-review` and `done` cards.
+2. If a card id was given, work that card. Otherwise take the first row whose status is `todo`, whose dependencies are all `done`, and whose id is not listed in `.headless/OPEN_PRS.txt`.
+3. Skip `needs-jasper`, `blocked`, `in-review` and `done` cards, and any card in `.headless/OPEN_PRS.txt`: those already have a PR waiting for Jasper, and a row stays `todo` on main until he merges it.
 4. Read its brief in `docs/headless/cards/<id>.md`.
-5. If no card is eligible, write `.headless/BLOCKED.md` saying so, plus a one-line `.headless/TITLE.txt`, and stop.
+5. If no card is eligible only because the rest are waiting in open PRs or need Jasper, write nothing and stop; the run ends quietly. If no card is eligible for any other reason (for example a dependency is `blocked`), write `.headless/BLOCKED.md` saying so, plus a one-line `.headless/TITLE.txt`, and stop.
 
 ## 2. Do the card
 - Work only on that card. If you notice another problem, add it to the "Found while working" list in the PR body instead of fixing it.

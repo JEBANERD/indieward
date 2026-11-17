@@ -76,6 +76,10 @@ PASS: traps survived. Build b1a2b3c4d5 is registered (manifest ...).
 
 A pass needs at least 2 core traps and the build trap. In a Shipping build with the C++ route, expect the strings (`loc_key`, `meta_value`, `function_return`, `build_tag`) and the two numbers (`constant`, `build_constant`) to be found in the `.exe`. `dead_function` (a function name), `hidden_asset` and `hidden_asset_hash` (the PNG) are usually reported missing: Shipping executables carry no function names, and the PNG only ships through the Blueprint route.
 
+The archive folder also holds `<Name>-Win64-Shipping.pdb` (debug symbols). It does contain the function name, so the check reports 7 of 9 with it there. Players don't get the `.pdb`; leave it out of what you upload. Without it the build reports 6 of 9 and still passes.
+
+Checked on 2026-11-10 with UE 5.5 (default packaging: pak plus IoStore `.ucas`/`.utoc`, no pak encryption), Shipping, Win64: 6 of 9 without the `.pdb`, PASS. UE 5.6 and later refuse the MSVC 14.40–14.43 compilers ("UnrealBuildTool has banned the MSVC 14.40.0-14.43.99999 toolchains"). If you see that, install the toolchain the message names from the Visual Studio Installer, or package with an older engine.
+
 ## Why the executable is enough
 
 C++ `TEXT("...")` literals are stored as UTF-16 inside the game's `.exe`, and IndieWard searches UTF-8, UTF-16 and UTF-32. That works even when your paks are encrypted, because the executable itself isn't. Files over 512 MB (usually big paks) are skipped by the scan; the executable is well under that.

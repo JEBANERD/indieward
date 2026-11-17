@@ -2,8 +2,8 @@
 
     python scripts/release_notes.py v0.1.0 > notes.md
 
-Fails (exit 1, message on stderr) when the tag isn't ``v<version>`` for the
-version in pyproject.toml, or when CHANGELOG.md has no ``## [<version>]``
+Fails (exit 1, message on stderr) when the tag isn't ``v<version>`` (or a
+pre-release ``v<version>-rcN``) for the version in pyproject.toml, or when CHANGELOG.md has no ``## [<version>]``
 section with something in it. The release workflow runs this before it builds
 anything, so a mistyped tag or a forgotten changelog entry stops the release.
 """
@@ -32,11 +32,18 @@ def section(changelog: str, version: str) -> str:
     return body
 
 
+def is_prerelease(tag: str, version: str) -> bool:
+    """``v<version>-rcN``: a release candidate of the pyproject version. The workflow marks it a GitHub
+    pre-release and never sends it to PyPI (its wheel still says ``<version>``)."""
+    return re.fullmatch(rf"v{re.escape(version)}-rc[1-9]\d*", tag) is not None
+
+
 def notes_for(tag: str, root: Path | None = None) -> str:
     root = root or ROOT
     version = project_version((root / "pyproject.toml").read_text(encoding="utf-8"))
-    if tag != f"v{version}":
-        raise ValueError(f"tag {tag!r} doesn't match pyproject.toml version {version!r} (expected 'v{version}')")
+    if tag != f"v{version}" and not is_prerelease(tag, version):
+        raise ValueError(f"tag {tag!r} doesn't match pyproject.toml version {version!r} "
+                         f"(expected 'v{version}', or 'v{version}-rc1' for a pre-release)")
     return section((root / "CHANGELOG.md").read_text(encoding="utf-8"), version)
 
 

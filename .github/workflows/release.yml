@@ -6,7 +6,8 @@ name: release
 #   3. create the GitHub release with the artifacts, the SBOM and the changelog section;
 #   4. publish to PyPI with trusted publishing, only once the repo variable PYPI_PUBLISH is "true".
 # Pull requests that touch release files run step 1 only, as a dry run. Nothing is published
-# from a branch push. Setup and verification: docs/releasing.md.
+# from a branch push. A tag vX.Y.Z-rcN makes a GitHub pre-release of the same version and skips PyPI,
+# so the whole pipeline can be tried before the real tag. Setup and verification: docs/releasing.md.
 on:
   push:
     tags: ["v*"]
@@ -99,14 +100,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.build.outputs.tag }}
         run: |
-          gh release create "$TAG" dist/* sbom/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+          pre=""; case "$TAG" in *-*) pre="--prerelease" ;; esac  # vX.Y.Z-rcN
+          gh release create "$TAG" dist/* sbom/* --repo "$GITHUB_REPOSITORY" --verify-tag $pre \
             --title "IndieWard ${TAG#v}" --notes-file release-notes.md
 
   pypi:
     name: publish to PyPI
     needs: [build, release]
-    # Off until Jasper registers the trusted publisher on PyPI and sets PYPI_PUBLISH=true.
-    if: github.ref_type == 'tag' && vars.PYPI_PUBLISH == 'true'
+    # Off until Jasper registers the trusted publisher on PyPI and sets PYPI_PUBLISH=true. Never for -rcN tags.
+    if: github.ref_type == 'tag' && vars.PYPI_PUBLISH == 'true' && !contains(github.ref_name, '-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:

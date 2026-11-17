@@ -1,0 +1,8 @@
+[gd_resource type="Translation" format=3]
+
+[resource]
+messages = {
+&"MENU_QUIT": &"Quitter",
+&"MENU_START": &"Commencer"
+}
+locale = "fr"

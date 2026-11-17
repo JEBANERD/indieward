@@ -272,6 +272,7 @@ namespace {cls}
     static volatile double GK = {k};
     static volatile double GCK = {bk};
     static volatile int32 GN = 0;
+    static const TCHAR* volatile GF = nullptr;
 
     const TCHAR* {fn}() {{ return TEXT("{fr}"); }}
 
@@ -279,7 +280,8 @@ namespace {cls}
     {{
         int32 N = 0;
         for (const TCHAR* T : GTable) {{ N += FCString::Strlen(T); }}
-        GN = N + (int32)(GK * 0.0 + GCK * 0.0) + FCString::Strlen({fn}()) * 0;
+        GN = N + (int32)(GK * 0.0 + GCK * 0.0);
+        GF = {fn}();  // a volatile store keeps the string in a Shipping build (x * 0 was optimised away)
     }}
 }}
 '''

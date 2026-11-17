@@ -1,0 +1,38 @@
+name: site
+
+# Builds the static guide site (P3-01) and deploys it to Cloudflare Pages from main.
+# Without the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets the deploy is skipped, not failed.
+on:
+  push:
+    branches: [main]
+    paths: ["README.md", "docs/**", "site/**", ".github/workflows/site.yml"]
+  pull_request:
+    paths: ["README.md", "docs/**", "site/**", ".github/workflows/site.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HAS_CLOUDFLARE: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m pip install "markdown-it-py>=3" pytest
+      - run: python site/build.py --out site/dist
+      - run: python -m pytest -q tests/test_site.py
+      - name: Deploy to Cloudflare Pages
+        if: env.HAS_CLOUDFLARE == 'true' && github.event_name != 'pull_request'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site/dist --project-name=indieward --branch=main
+      - name: Deploy skipped
+        if: env.HAS_CLOUDFLARE != 'true'
+        run: echo "No Cloudflare secrets set; the site was built and tested, deploy skipped."

@@ -43,8 +43,8 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-24 | Code fingerprint versions: pin today's tokens, warn when a registration predates them | 2 | todo | P2-14 | M |
 | P3-06 | Bring the plugin listing privacy notes and launch posts up to date | 3 | todo | P4-01 | S |
 | P2-26 | Check the guide's EU decompilation and court wording against the official text | 2 | todo | P2-12 | S |
-| P1-05 | CI gaps: doctor in ci.yml, site workflow, slow and real-library tests (workflow edits) | 1 | in-review | P1-03 | M |
-| P2-27 | First real run of the UE5 trap check | 2 | in-review | P2-04 | S |
+| P1-05 | CI gaps: doctor in ci.yml, site workflow, slow and real-library tests (workflow edits) | 1 | done | P1-03 | M |
+| P2-27 | First real run of the UE5 trap check | 2 | done | P2-04 | S |
 | P3-07 | Release workflow: first run on a pre-release tag | 3 | needs-jasper | P3-02 | S |
 | P2-28 | `traps inject` for Unity Localization string tables (split from P2-16) | 2 | needs-jasper | P2-16 | M |
 | P2-29 | UE 5.8 trap check on an encrypted Shipping build (Parasomnia demo dogfood, by 2027-05-31) | 2 | needs-jasper | P2-27 | M |

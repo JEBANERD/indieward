@@ -37,7 +37,12 @@ jobs:
         with: { python-version: "3.12" }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      # 11 Nov: Ubuntu's mirror stopped resolving and this step hung for an hour. Retry, then give up fast.
+      - name: Install ffmpeg
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update -qq -o Acquire::Retries=3
+          sudo apt-get install -y -qq -o Acquire::Retries=3 ffmpeg
       - run: python -m pip install -e ".[mcp,dev]"
       - name: Work branch
         run: |
@@ -85,16 +90,24 @@ jobs:
           # claude-code-action points origin at its own app token and revokes it when it finishes.
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
           gh auth setup-git
-          if [ -f .headless/BLOCKED.md ]; then
-            gh issue create --title "$(head -n1 .headless/TITLE.txt 2>/dev/null || echo 'Headless run blocked')" \
-              --body-file .headless/BLOCKED.md --label headless || \
-            gh issue create --title "Headless run blocked" --body-file .headless/BLOCKED.md
+          ahead="$(git rev-list --count origin/main..HEAD)"
+          # Title: TITLE.txt, else the last commit's subject (it starts with the card id), else a generic one.
+          title="$(head -n1 .headless/TITLE.txt 2>/dev/null || true)"
+          [ -n "$title" ] || { [ "$ahead" -gt 0 ] && title="$(git log -1 --format=%s)"; } || true
+          [ -n "$title" ] || title="Headless run ${{ github.run_id }}"
+          # A blocked run often commits the card's `blocked` row but writes no PR_BODY.md. Use BLOCKED.md as
+          # the body then, so the PR still opens (11-16 Nov: P2-21 failed here four times and never left `todo`).
+          body=.headless/PR_BODY.md
+          [ -f "$body" ] || body=.headless/BLOCKED.md
+          if [ -f .headless/BLOCKED.md ] && [ "$ahead" -eq 0 ]; then
+            # Nothing to review, so the issue is the only hand-off.
+            gh issue create --title "$title" --body-file .headless/BLOCKED.md --label headless || \
+            gh issue create --title "$title" --body-file .headless/BLOCKED.md
           fi
-          if [ "$(git rev-list --count origin/main..HEAD)" -gt 0 ]; then
+          if [ "$ahead" -gt 0 ]; then
+            [ -f "$body" ] || { printf 'Headless run %s left commits but no PR_BODY.md or BLOCKED.md.\n' "${{ github.run_id }}" > .headless/PR_BODY.md; body=.headless/PR_BODY.md; }
             git push -u origin HEAD
-            gh pr create --base main --head "$(git branch --show-current)" \
-              --title "$(head -n1 .headless/TITLE.txt 2>/dev/null || echo 'Headless run ${{ github.run_id }}')" \
-              --body-file .headless/PR_BODY.md
+            gh pr create --base main --head "$(git branch --show-current)" --title "$title" --body-file "$body"
           else
             echo "No commits; nothing to open."
           fi

@@ -25,7 +25,9 @@ You are working on IndieWard unattended, in a GitHub Actions runner. Nobody can 
   5. **Found while working**.
 - Keep it under about 40 lines.
 
-If you can't finish, commit what's safe, set the card to `blocked`, and write `.headless/BLOCKED.md`. Say what you tried, the exact error, and the fix you propose.
+If you can't finish, commit what's safe, set the card to `blocked` (and commit that row), and write `.headless/BLOCKED.md`. Say what you tried, the exact error, and the fix you propose. Also write `.headless/TITLE.txt` as `<card id>: blocked: <reason in a few words>`. The workflow opens a PR with BLOCKED.md as its body, so the `blocked` row reaches main when Jasper merges it, and the next run skips the card meanwhile.
+
+Before you call a card blocked, read its brief to the end. A section such as "Reproduced on Windows" or "Sample" may already hold what you need.
 
 ## Guardrails (never break these)
 - **No sending.** Never add code that sends email, submits forms or contacts stores. Never weaken the PreToolUse hook.

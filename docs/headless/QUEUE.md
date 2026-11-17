@@ -47,4 +47,5 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-27 | First real run of the UE5 trap check | 2 | in-review | P2-04 | S |
 | P3-07 | Release workflow: first run on a pre-release tag | 3 | needs-jasper | P3-02 | S |
 | P2-28 | `traps inject` for Unity Localization string tables (split from P2-16) | 2 | needs-jasper | P2-16 | M |
+| P2-29 | UE 5.8 trap check on an encrypted Shipping build (Parasomnia demo dogfood, by 2027-05-31) | 2 | needs-jasper | P2-27 | M |
 | P1-04 | Dogfood on one of Jasper's real games (deferred: no test game yet) | 1 | needs-jasper | P1-03 | – |

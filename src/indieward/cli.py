@@ -104,7 +104,7 @@ def main(argv=None) -> int:
     ts = a.add_subparsers(dest="action", required=True)
     b = ts.add_parser("new"); b.add_argument("--label", required=True); b.add_argument("--engine", default="generic", choices=["godot", "unity", "ue5", "roblox", "web", "generic"]); b.add_argument("--out")
     b = ts.add_parser("verify"); b.add_argument("--build", required=True); b.add_argument("path")
-    b = ts.add_parser("inject", help="hide this build's traps in one of your own data files (CSV, JSON, PO)")
+    b = ts.add_parser("inject", help="hide this build's traps in one of your own data files (CSV, JSON, PO, Godot .tres)")
     b.add_argument("--build", required=True); b.add_argument("--into", required=True, help="your data file")
     b.add_argument("--apply", action="store_true", help="write the change (default: show the diff only)")
     b.add_argument("--rows", action="store_true", help="allow adding rows to a data table (a CSV that isn't a localization "

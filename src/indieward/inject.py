@@ -6,7 +6,8 @@ localization file, manifest or data table look like everything around them.
 
 Supported: localization CSV (one more row per value), JSON (extra keys in
 the busiest string table, or one more object in a list of objects), and
-gettext PO (extra msgid/msgstr entries). Any other CSV, and JSON lists of rows,
+gettext PO (extra msgid/msgstr entries) and Godot ``.tres`` Translation resources
+(extra message lines; an OptimizedTranslation is hashed and is refused). Any other CSV, and JSON lists of rows,
 need ``rows=True``, because a game that loops over every row would show or load the trap. New entries follow the file's own key
 style (prefix, separator, case) and are only ever added: existing text is never
 rewritten. Nothing is written without ``apply=True``; a backup goes into the
@@ -29,7 +30,7 @@ from .traps import records
 from .vault import Vault
 
 BOM = "\ufeff"
-FORMATS = {".csv": "csv", ".tsv": "csv", ".json": "json", ".po": "po", ".pot": "po"}
+FORMATS = {".csv": "csv", ".tsv": "csv", ".json": "json", ".po": "po", ".pot": "po", ".tres": "tres"}
 
 
 class InjectError(ValueError):
@@ -236,6 +237,84 @@ def _inject_po(text: str, pairs) -> tuple[str, list[str]]:
     return head + nl + (nl + nl).join(blocks) + nl, keys
 
 
+TRES_HEAD = re.compile(r'^\[gd_resource\s+([^\]]*)\]', re.M)
+TRES_ENTRY = re.compile(r'^(\s*)(&?)"((?:[^"\\]|\\.)*)"(\s*:\s*)(&?)"((?:[^"\\]|\\.)*)"(,?)(\s*)$')
+
+
+def _tres_quote(s: str) -> str:
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
+
+
+def _tres_unquote(s: str) -> str:
+    return re.sub(r"\\(.)", lambda m: {"n": "\n", "t": "\t"}.get(m.group(1), m.group(1)), s)
+
+
+def _inject_tres(text: str, pairs) -> tuple[str, list[str]]:
+    """Add messages to a Godot text Translation resource. Existing lines only gain a comma, never change."""
+    head = TRES_HEAD.search(text)
+    kind = re.search(r'type="([^"]*)"', head.group(1)) if head else None
+    if not kind:
+        raise InjectError("not a Godot text resource (no [gd_resource type=...] header)")
+    if kind.group(1) == "OptimizedTranslation":
+        raise InjectError("this is an OptimizedTranslation: its messages are stored as hashes, so entries can't be "
+                          "added safely. Inject into the CSV or .po the game was built from instead")
+    if kind.group(1) != "Translation":
+        raise InjectError(f"unsupported resource type {kind.group(1)!r}; only a plain Translation can be injected "
+                          "(a .po file works for TranslationPO)")
+    lines = text.splitlines(True)
+    start = next((i for i, l in enumerate(lines) if re.match(r"^messages\s*=\s*\{\s*$", l)), None)
+    if start is None:
+        raise InjectError("found no `messages = {` block to add to")
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].strip() == "}"), None)
+    if end is None:
+        raise InjectError("the messages block isn't closed")
+    entries = []
+    for l in lines[start + 1:end]:
+        m = TRES_ENTRY.match(l)
+        if not m:
+            raise InjectError("found a message line this tool can't read; refusing to touch the file")
+        entries.append(m)
+    if not entries:
+        raise InjectError("the messages block is empty, so there is no style to copy")
+    keys_old = [_tres_unquote(m.group(3)) for m in entries]
+    style = _style(keys_old)
+    sort = keys_old == sorted(keys_old)  # Godot saves keys sorted; keep it that way
+    nl = _nl(text)
+    amp_k, amp_v, colon = entries[0].group(2), entries[0].group(5), entries[0].group(4)
+    indent = entries[0].group(1)
+    body = [l for l in lines[start + 1:end]]
+    keys = []
+    for word, value in pairs:
+        k = _key(style, word)
+        if k in keys_old or k in keys:
+            raise InjectError(f"message key {k!r} already exists")
+        keys.append(k)
+        if sort:
+            cur = [_tres_unquote(TRES_ENTRY.match(l).group(3)) for l in body]
+            at = sum(1 for o in cur if o < k)
+        else:
+            at = len(body)
+        new = f"{indent}{amp_k}{_tres_quote(k)}{colon}{amp_v}{_tres_quote(value)}"
+        if at >= len(body):
+            if body:  # the old last line needs a comma now
+                last = body[-1]
+                core = last.rstrip("\r\n")
+                tail = last[len(core):]
+                if not core.rstrip().endswith(","):
+                    body[-1] = core.rstrip() + "," + core[len(core.rstrip()):] + tail
+            body.append(new + nl)
+        else:
+            body.insert(at, new + "," + nl)
+    out = "".join(lines[:start + 1] + body + lines[end:])
+    return out, keys
+
+
+def _is_subsequence(old: str, new: str) -> bool:
+    """Every character of old appears in new in order: the change only inserted."""
+    it = iter(new)
+    return all(c in it for c in old)
+
+
 def _extends(old, new) -> bool:
     """new keeps every old key and value as is; lists may only grow at the end."""
     if isinstance(old, dict):
@@ -253,7 +332,7 @@ def inject(vault: Vault, build_id: str, into, apply: bool = False, rows: bool = 
     path = Path(into)
     fmt = FORMATS.get(path.suffix.lower())
     if not fmt:
-        raise InjectError(f"unsupported file type {path.suffix!r}; use a .csv, .tsv, .json or .po file")
+        raise InjectError(f"unsupported file type {path.suffix!r}; use a .csv, .tsv, .json, .po or Godot .tres file")
     if not path.is_file():
         raise InjectError(f"no such file: {path}")
     raw = path.read_bytes()
@@ -268,9 +347,14 @@ def inject(vault: Vault, build_id: str, into, apply: bool = False, rows: bool = 
         new, keys = _inject_csv(text, pairs, path, rows)
     elif fmt == "json":
         new, keys = _inject_json(text, pairs, number, rows)
+    elif fmt == "tres":
+        new, keys = _inject_tres(text, pairs)
     else:
         new, keys = _inject_po(text, pairs)
-    if not new.startswith(text.rstrip("\r\n")) and fmt != "json":
+    if fmt == "tres":
+        if not _is_subsequence(text, new):
+            raise InjectError("refusing: the change would alter existing lines")  # belt and braces
+    elif not new.startswith(text.rstrip("\r\n")) and fmt != "json":
         raise InjectError("refusing: the change would alter existing lines")  # belt and braces
     if fmt == "json" and not _extends(json.loads(text.lstrip(BOM)), json.loads(new.lstrip(BOM))):
         raise InjectError("refusing: the change would alter existing JSON entries")  # belt and braces

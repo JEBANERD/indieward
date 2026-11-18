@@ -210,3 +210,56 @@ def test_localization_csv_header(header, ok):
 ])
 def test_key_style(keys, word, expect):
     assert _key(_style(keys), word) == expect
+
+
+# --- Godot .tres Translation (P2-16) ---------------------------------------------
+
+FIX = Path(__file__).resolve().parent / "fixtures" / "inject"
+
+
+def _tres(tmp_path, name="godot_translation_fr.tres"):
+    f = tmp_path / "fr.tres"
+    f.write_bytes((FIX / name).read_bytes())
+    return f
+
+
+def _only_insertions(old: str, new: str) -> bool:
+    import difflib
+    return all(op[0] in ("equal", "insert") for op in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes())
+
+
+def test_tres_adds_entries_and_only_inserts(vb, tmp_path):
+    v, b = vb
+    f = _tres(tmp_path)
+    before = f.read_text("utf-8")
+    plan = inject(v, b, f)
+    assert f.read_text("utf-8") == before and not plan["applied"]
+    r = inject(v, b, f, apply=True)
+    after = f.read_text("utf-8")
+    assert len(r["keys"]) == 3 and _only_insertions(before, after)
+    assert after.count('&"') == before.count('&"') + 6  # a key and a value per entry
+    assert all(k.startswith("MENU_") for k in r["keys"]) or all(k.isupper() or "_" in k for k in r["keys"])
+    msgs = after.split("messages = {")[1].split("}")[0].strip().splitlines()
+    assert all(l.endswith(",") for l in msgs[:-1]) and not msgs[-1].endswith(",")
+    assert traps.verify_build(v, b, tmp_path)["ok"]
+
+
+def test_tres_refuses_optimized_and_second_injection(vb, tmp_path):
+    v, b = vb
+    f = _tres(tmp_path, "godot_optimized_translation_fr.tres")
+    before = f.read_bytes()
+    with pytest.raises(InjectError, match="OptimizedTranslation"):
+        inject(v, b, f, apply=True)
+    assert f.read_bytes() == before
+    g = _tres(tmp_path)
+    inject(v, b, g, apply=True)
+    with pytest.raises(InjectError, match="already holds"):
+        inject(v, b, g, apply=True)
+
+
+def test_tres_refuses_unreadable_block(vb, tmp_path):
+    v, b = vb
+    f = tmp_path / "x.tres"
+    f.write_text('[gd_resource type="Translation" format=3]\n\n[resource]\nmessages = {\nweird line\n}\n')
+    with pytest.raises(InjectError, match="can't read"):
+        inject(v, b, f, apply=True)

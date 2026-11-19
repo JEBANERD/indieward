@@ -143,3 +143,15 @@ def test_doctor_never_installs(monkeypatch, tmp_path):
     monkeypatch.setattr(doctor.subprocess, "run", lambda cmd, **k: calls.append(cmd) or SimpleNamespace(returncode=0))
     doctor.run(tmp_path)
     assert all(c[1:2] == ["ts"] for c in calls)  # the only command run is the `openssl ts` probe
+
+
+def test_ots_that_cannot_start_is_not_ok(tmp_path, monkeypatch):
+    _env(monkeypatch)
+    crash = 'Traceback (most recent call last):\nTypeError: argument of type \'NoneType\' is not iterable\n'
+    real = doctor.subprocess.run
+    monkeypatch.setattr(doctor.subprocess, "run", lambda cmd, **k: SimpleNamespace(
+        returncode=1, stdout="", stderr=crash) if cmd[0].endswith("ots") else real(cmd, **k))
+    res = doctor.run(tmp_path)
+    c = _by_name(res)["ots"]
+    assert not c["ok"] and "can't start" in c["detail"] and "WSL" in c["fix"]
+    assert res["ok"]  # optional tool: doesn't block

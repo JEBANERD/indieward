@@ -125,6 +125,18 @@ def stamp(vault: Vault, subject: str, digest_hex: str) -> dict:
     return results
 
 
+OTS_CANT_START = ("The official OpenTimestamps client (`ots`) is installed but can't start on this machine "
+                  "(known on Windows). Your proof file is safe and still pending. You can upgrade it later "
+                  "with `ots upgrade` on macOS, Linux or WSL: the .ots file is portable.")
+
+
+def ots_failed_to_start(returncode: int, output: str) -> bool:
+    """True when `ots` crashed at startup (a Python traceback), not when it ran and reported a status."""
+    if returncode == 0 or "Traceback (most recent call last)" not in output:
+        return False
+    return not any(m in output for m in ("Pending confirmation", "Timestamp not complete"))
+
+
 def _ots_upgrade(path: Path) -> dict:
     """Complete a pending OpenTimestamps proof with the official client, if installed."""
     ots = shutil.which("ots")
@@ -133,7 +145,10 @@ def _ots_upgrade(path: Path) -> dict:
                 "note": "Install the official client (pip install opentimestamps-client) to upgrade: ots upgrade "
                         f"{path}"}
     r = subprocess.run([ots, "upgrade", str(path)], capture_output=True, text=True)
-    ok = r.returncode == 0 and "Success" in (r.stdout + r.stderr)
+    out = (r.stdout or "") + (r.stderr or "")
+    if ots_failed_to_start(r.returncode, out):
+        return {"status": "pending-bitcoin", "token": path.name, "note": OTS_CANT_START}
+    ok = r.returncode == 0 and "Success" in out
     return {"status": "anchored" if ok else "pending-bitcoin", "token": path.name,
             "note": (r.stdout + r.stderr)[-300:]}
 

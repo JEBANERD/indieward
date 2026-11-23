@@ -151,7 +151,20 @@ ROWS_WARNING = ("Only use a file your game looks things up in by key or id. If y
                 "which traps must never do.")
 
 
-def _inject_json(text: str, pairs, number: str, rows: bool = False) -> tuple[str, list[str]]:
+LOCALE_TOKENS = {"en", "fr", "de", "es", "pt", "ru", "ja", "ko", "zh", "pl", "tr", "nl", "sv", "da", "fi", "cs",
+                 "uk", "ar", "th", "vi", "hu", "ro", "el", "he", "locale", "locales", "lang", "langs", "language",
+                 "languages", "i18n", "l10n", "string", "strings", "translation", "translations"}
+
+
+def _looks_localized(name: str, key_path=()) -> bool:
+    """The file name or the table's key path holds a locale code (en, en_US, fr-FR) or a localisation word."""
+    for part in (name, *map(str, key_path)):
+        if any(t in LOCALE_TOKENS for t in re.split(r"[^a-z0-9]+", part.lower()) if t):
+            return True
+    return False
+
+
+def _inject_json(text: str, pairs, number: str, rows: bool = False, name: str = "") -> tuple[str, list[str]]:
     body = text[1:] if text.startswith(BOM) else text
     try:
         obj = json.loads(body)
@@ -194,6 +207,11 @@ def _inject_json(text: str, pairs, number: str, rows: bool = False) -> tuple[str
         if not tables:
             raise InjectError("found no string table (an object whose values are text) to add keys to")
         path_, table = max(tables, key=lambda t: len(t[1]))
+        if not rows and not _looks_localized(name, path_):
+            raise InjectError("this JSON object is a string table, but its file name and key path don't look like "
+                              "localization (a locale code such as en or fr_FR, or locale, lang, i18n, l10n, "
+                              "strings, translations). It may be an item or data registry. " + ROWS_WARNING +
+                              " If the game only looks entries up by key, run again with --rows")
         style = _style(list(table))
         new = json.loads(json.dumps(obj))
         target = new
@@ -346,7 +364,7 @@ def inject(vault: Vault, build_id: str, into, apply: bool = False, rows: bool = 
     if fmt == "csv":
         new, keys = _inject_csv(text, pairs, path, rows)
     elif fmt == "json":
-        new, keys = _inject_json(text, pairs, number, rows)
+        new, keys = _inject_json(text, pairs, number, rows, path.stem)
     elif fmt == "tres":
         new, keys = _inject_tres(text, pairs)
     else:
@@ -369,8 +387,17 @@ def inject(vault: Vault, build_id: str, into, apply: bool = False, rows: bool = 
     backups = vault.path("backups")
     backups.mkdir(parents=True, exist_ok=True)
     stamp = util.now_iso().replace(":", "").replace("-", "")[:15]
-    backup = backups / f"{stamp}_{path.name}"
-    backup.write_bytes(raw)
+    # The file's own SHA-256 makes the name unique; "x" mode refuses to overwrite an existing backup.
+    backup = backups / f"{stamp}_{util.sha256_bytes(raw)[:12]}_{path.name}"
+    try:
+        with open(backup, "xb") as fh:
+            fh.write(raw)
+    except FileExistsError:
+        n = 2
+        while backup.with_name(f"{backup.stem}_{n}{backup.suffix}").exists():
+            n += 1
+        backup = backup.with_name(f"{backup.stem}_{n}{backup.suffix}")
+        backup.write_bytes(raw)
     path.write_bytes(new.encode("utf-8"))
     from .check import _setting, set_setting
 
@@ -381,4 +408,38 @@ def inject(vault: Vault, build_id: str, into, apply: bool = False, rows: bool = 
     res.update(applied=True, backup=str(backup),
                next="Don't reference these keys from game code. Export the build, then run "
                     f"`indieward build register --build {build_id} <export>` to confirm they survived.")
+    return res
+
+
+def restore(vault: Vault, into, apply: bool = False) -> dict:
+    """Put back the original bytes of a file from the vault's backup of its latest injection."""
+    vault.require_verified("restore a file from the vault backup")
+    from .check import _setting
+
+    path = Path(into)
+    if not path.is_file():
+        raise InjectError(f"no such file: {path}")
+    target = str(path.resolve())
+    entry = next((e for e in reversed(_setting(vault, "injections", [])) if e.get("file") == target), None)
+    if not entry:
+        raise InjectError("no injection is logged for this file, so there is nothing to restore")
+    backup = vault.path(entry["backup"])
+    if not backup.is_file():
+        raise InjectError(f"the vault backup {entry['backup']} is missing, so the file can't be restored")
+    current = path.read_bytes()
+    if util.sha256_bytes(current) != entry["sha256"]:
+        raise InjectError("the file was edited after the inject, so restoring would lose those edits. "
+                          "Remove the injected keys by hand, or copy the backup out of the vault yourself: "
+                          + str(backup))
+    original = backup.read_bytes()
+    diff = "".join(difflib.unified_diff(current.decode("utf-8", "replace").splitlines(True),
+                                        original.decode("utf-8", "replace").splitlines(True),
+                                        fromfile=str(path), tofile=str(path)))
+    res = {"file": target, "restore_from": str(backup), "build_id": entry["build_id"], "keys": entry["keys"],
+           "diff": diff, "applied": False}
+    if not apply:
+        res["next"] = "Review the diff, then run again with --apply to put the original file back."
+        return res
+    path.write_bytes(original)
+    res.update(applied=True, next="Restored. The vault backup is kept.")
     return res

@@ -424,3 +424,61 @@ def test_no_code_path_can_send_anything():
     banned = re.compile(r"import smtplib|from smtplib|smtplib\.|\.sendmail\(|\.send_message\(|SMTP\(|SMTP_SSL\(")
     for f in SRC.rglob("*.py"):
         assert not banned.search(f.read_text()), f
+
+
+# --- code fingerprint versions (P2-24) ---------------------------------------------
+
+def _code_score(report):
+    return next(c["score"] for c in report["categories"] if c["key"] == "code")
+
+
+def _as_version_1(v, build_zip):
+    """Re-fingerprint the registered code with the frozen version-1 tokenizer, as a pre-#30 registration was."""
+    import fp_code_v1
+    saved = {}
+    for a in v.db.execute("SELECT * FROM assets WHERE kind='code'").fetchall():
+        p = v.path(a["fp_path"])
+        saved[p] = p.read_text()
+        p.write_text(json.dumps(fp_code_v1.fingerprint_files([a["source_path"]])))  # no "version" key
+    snip = traps.snippet_names(v)
+    blobs = {}
+    for name, data in traps.iter_blobs(build_zip):  # same selection as registry.register_build
+        inner = name.split("!/")[-1]
+        if traps.is_snippet_path(inner, snip) or registry.util.is_vendor_path(inner):
+            continue
+        if registry.util.kind_for(inner) == "code" and len(data) < 5_000_000:
+            blobs[Path(name).name] = data.decode("utf-8", "replace")
+    for b in v.db.execute("SELECT * FROM builds WHERE fp_path IS NOT NULL").fetchall():
+        p = v.path(b["fp_path"])
+        saved[p] = p.read_text()
+        d = json.loads(saved[p])
+        d["code"] = fp_code_v1.fingerprint_text_blobs(blobs)
+        p.write_text(json.dumps(d))
+    return saved
+
+
+def test_old_fingerprint_version_warns_and_current_does_not(world):
+    v = world["vault"]
+    clone_zip = next((world["root"] / "clone").glob("*.zip"))
+    assert not registry.code_fp_outdated(v)
+    now = check.run(v, [clone_zip], suspect_name="clone-now")
+    now_r = json.loads(Path(now["report_json"]).read_text())
+    now_code = next(c for c in now_r["categories"] if c["key"] == "code")
+    assert "older format" not in now_code["summary"] and "old_fingerprint_format" not in now_code
+    assert "code_fingerprints" not in cli.status(v)
+
+    saved = _as_version_1(v, world["build_zip"])
+    try:
+        assert registry.code_fp_outdated(v)
+        old = check.run(v, [clone_zip], suspect_name="clone-old")
+        old_r = json.loads(Path(old["report_json"]).read_text())
+        old_code = next(c for c in old_r["categories"] if c["key"] == "code")
+        assert "older format" in old_code["summary"] and "indieward register" in old_code["summary"]
+        assert "code_fingerprints" in cli.status(v)
+        print("CODE SCORE clone: version-1 registration", old_code["score"], "-> version-2 registration", now_code["score"])
+        # the disclaimer, labels and filing advice are untouched by the warning
+        assert old_code["strength"] == "Strong"
+    finally:
+        for p, text in saved.items():
+            p.write_text(text)
+    assert not registry.code_fp_outdated(v)

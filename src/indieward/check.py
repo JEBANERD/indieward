@@ -277,6 +277,9 @@ def _score(vault: Vault, sus: Suspect, out: Path, mechanics) -> dict:
                      f"ignored." + (f" {cc['excluded_common']} common fingerprints excluded" + (f" (bundled: {', '.join(bundled)})" if bundled else "") + "." if cc["excluded_common"] else "")
                      if reg_code["fingerprints"] and sus.code else "No comparable code (none registered or none found in the suspect).",
                      code_ev))
+    if reg_code["fingerprints"] and registry.code_fp_outdated(vault):
+        cats[-1]["summary"] += " " + registry.OLD_FP_NOTE
+        cats[-1]["old_fingerprint_format"] = True
 
     # 3/4/name-logo. images
     sus_fps = [fp_image.fingerprint_image(im) for _, im in sus.images]

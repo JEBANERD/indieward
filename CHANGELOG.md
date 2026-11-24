@@ -9,6 +9,7 @@ To release: put the date on the version's heading (or add a new `## [x.y.z] - YY
 First public release.
 
 ### Added
+- Code fingerprints record a tokenizer version (`FP_CODE_VERSION`). `check` and `status` warn when a registration was made with the older format, which can lower the code score; re-registering refreshes it.
 - Store verification gate: registering, trapping, checking, certifying and packaging all need a verified Steam, itch.io or Roblox page.
 - Registration of art, audio, video, code, story text and builds, with a certificate signed by the creator's key and timestamped by an RFC 3161 authority and by OpenTimestamps.
 - IW-Mark v1 invisible watermarks for images, audio and video (open format, 40-bit record ID plus a 24-bit MAC).

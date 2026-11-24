@@ -155,3 +155,20 @@ def assets(vault: Vault, kind: str | None = None) -> list[dict]:
 
 def load_fp(vault: Vault, row: dict) -> dict:
     return json.loads(vault.path(row["fp_path"]).read_text())
+
+
+OLD_FP_NOTE = ("Some of your registered code was fingerprinted with an older format (before comment rules followed "
+               "the file type), so the code score may read low. Re-registering the same files "
+               "(`indieward register <path>`) refreshes it. Nothing already registered is changed or re-signed.")
+
+
+def code_fp_outdated(vault: Vault) -> bool:
+    """True if any registered code fingerprint predates the current tokenizer (no version recorded = version 1)."""
+    for a in vault.db.execute("SELECT * FROM assets WHERE kind='code'").fetchall():
+        if load_fp(vault, dict(a)).get("version", 1) < fp_code.FP_CODE_VERSION:
+            return True
+    for b in vault.db.execute("SELECT fp_path FROM builds WHERE fp_path IS NOT NULL").fetchall():
+        if vault.path(b["fp_path"]).exists() and \
+                json.loads(vault.path(b["fp_path"]).read_text())["code"].get("version", 1) < fp_code.FP_CODE_VERSION:
+            return True
+    return False

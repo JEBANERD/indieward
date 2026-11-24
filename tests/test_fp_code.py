@@ -78,3 +78,28 @@ def test_family_lookup():
     assert fp_code.comment_family("init.client.luau") == "lua"
     assert fp_code.comment_family("player.gd") == "hash"
     assert fp_code.comment_family("dump") is None
+
+
+# --- golden outputs and fingerprint versions (P2-24) -------------------------------------------
+
+import json  # noqa: E402
+
+import pytest  # noqa: E402
+
+from golden_fp_code import GOLDEN  # noqa: E402
+from golden_samples import SAMPLES  # noqa: E402
+
+
+@pytest.mark.parametrize("key", sorted(SAMPLES))
+def test_golden_tokens_and_fingerprints(key):
+    name, text = SAMPLES[key]
+    tokens, hashes = GOLDEN[key]
+    assert " ".join(_toks(text, name)) == tokens
+    assert sorted(fingerprint_text_blobs({name: text})["fingerprints"]) == hashes
+    assert fp_code.FP_CODE_VERSION == 2  # a tokenizer change must bump this and regenerate the golden file
+
+
+def test_fingerprints_carry_the_version(tmp_path):
+    (tmp_path / "a.lua").write_text(SAMPLES["lua"][1])
+    assert fp_code.fingerprint_files([tmp_path / "a.lua"])["version"] == fp_code.FP_CODE_VERSION
+    assert fingerprint_text_blobs({"a.lua": SAMPLES["lua"][1]})["version"] == fp_code.FP_CODE_VERSION

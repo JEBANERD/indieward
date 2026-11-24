@@ -36,6 +36,9 @@ FIXES = {
 }
 
 
+from .timestamp import ots_failed_to_start  # noqa: E402
+
+
 def _platform() -> str:
     return "win32" if sys.platform.startswith("win") else "darwin" if sys.platform == "darwin" else "linux"
 
@@ -86,7 +89,19 @@ def check_openssl() -> dict:
 
 def check_ots() -> dict:
     p = shutil.which("ots")
-    return _item("ots", bool(p), p or "not found (optional: upgrades OpenTimestamps proofs)", needed=False)
+    if not p:
+        return _item("ots", False, "not found (optional: upgrades OpenTimestamps proofs)", needed=False)
+    try:
+        r = subprocess.run([p, "--version"], capture_output=True, text=True, timeout=30)
+        out = (getattr(r, "stdout", "") or "") + (getattr(r, "stderr", "") or "")
+        broken = ots_failed_to_start(r.returncode, out)
+    except (OSError, subprocess.SubprocessError):
+        broken = True
+    if broken:
+        return _item("ots", False, f"{p} is installed but can't start (known on Windows)", needed=False,
+                     fix="your proofs stay safe and pending; upgrade them later on macOS, Linux or WSL "
+                         "with `ots upgrade <file>.ots` (the .ots file is portable)")
+    return _item("ots", True, p, needed=False)
 
 
 def check_mcp() -> dict:

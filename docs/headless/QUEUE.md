@@ -39,7 +39,7 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P2-23 | Vault hook: catch `git` behind `&`, a full path or a prefix command (P2-13 bypasses) | 2 | done | P2-13 | S |
 | P2-21 | OpenTimestamps client on Windows: detect it's broken, say so plainly | 2 | in-review | P1-03 | S |
 | P2-22 | Recognise a library from any one of its build files (Vue's production build is missed) | 2 | todo | P2-19 | M |
-| P2-25 | `traps inject` safety: gate JSON objects, unique backups, a restore command | 2 | todo | P2-09 | M |
+| P2-25 | `traps inject` safety: gate JSON objects, unique backups, a restore command | 2 | in-review | P2-09 | M |
 | P2-24 | Code fingerprint versions: pin today's tokens, warn when a registration predates them | 2 | todo | P2-14 | M |
 | P3-06 | Bring the plugin listing privacy notes and launch posts up to date | 3 | todo | P4-01 | S |
 | P2-26 | Check the guide's EU decompilation and court wording against the official text | 2 | todo | P2-12 | S |

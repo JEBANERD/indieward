@@ -105,7 +105,9 @@ def main(argv=None) -> int:
     b = ts.add_parser("new"); b.add_argument("--label", required=True); b.add_argument("--engine", default="generic", choices=["godot", "unity", "ue5", "roblox", "web", "generic"]); b.add_argument("--out")
     b = ts.add_parser("verify"); b.add_argument("--build", required=True); b.add_argument("path")
     b = ts.add_parser("inject", help="hide this build's traps in one of your own data files (CSV, JSON, PO, Godot .tres)")
-    b.add_argument("--build", required=True); b.add_argument("--into", required=True, help="your data file")
+    b.add_argument("--build"); b.add_argument("--into", help="your data file")
+    b.add_argument("--restore", metavar="FILE", help="put back the original of a file you injected (shows a plan; "
+                   "needs --apply to write). Refuses if the file changed since the inject")
     b.add_argument("--apply", action="store_true", help="write the change (default: show the diff only)")
     b.add_argument("--rows", action="store_true", help="allow adding rows to a data table (a CSV that isn't a localization "
                    "table, or a JSON list); only if the game looks rows up by id and never loops over all of them)")
@@ -263,8 +265,21 @@ def _run(args) -> int:
         elif args.action == "verify":
             _out(traps.verify_build(v, args.build, args.path), j)
         elif args.action == "inject":
-            from .inject import InjectError, inject
+            from .inject import InjectError, inject, restore
 
+            if args.restore:
+                try:
+                    r = restore(v, args.restore, args.apply)
+                except InjectError as e:
+                    raise ValueError(str(e)) from e
+                if j:
+                    _out(r, j)
+                else:
+                    print(r["diff"], end="")
+                    print(r["next"])
+                return 0
+            if not (args.build and args.into):
+                raise ValueError("give --build and --into, or --restore FILE")
             try:
                 r = inject(v, args.build, args.into, args.apply, args.rows)
             except InjectError as e:

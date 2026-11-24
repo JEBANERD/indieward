@@ -106,7 +106,7 @@ def test_json_manifest_rows(vb, tmp_path):
 
 def test_json_minified_kept_minified(vb, tmp_path):
     v, b = vb
-    f = tmp_path / "min.json"
+    f = tmp_path / "strings_min.json"
     f.write_bytes('{"a.one":"One","a.two":"Two"}'.encode())
     inject(v, b, f, apply=True)
     assert "\n" not in f.read_text() and traps.verify_build(v, b, f)["ok"]
@@ -263,3 +263,76 @@ def test_tres_refuses_unreadable_block(vb, tmp_path):
     f.write_text('[gd_resource type="Translation" format=3]\n\n[resource]\nmessages = {\nweird line\n}\n')
     with pytest.raises(InjectError, match="can't read"):
         inject(v, b, f, apply=True)
+
+
+def test_json_item_registry_object_needs_rows(vb, tmp_path):
+    v, b = vb
+    f = tmp_path / "items.json"
+    before = json.dumps({"items": {"sword": "Sword", "bow": "Bow"}}, indent=2) + "\n"
+    f.write_bytes(before.encode())
+    with pytest.raises(InjectError, match="--rows"):
+        inject(v, b, f, apply=True)
+    assert f.read_text() == before
+    r = inject(v, b, f, apply=True, rows=True)
+    assert r["warning"] and r["applied"]
+
+
+def test_json_localization_objects_need_no_flag(vb, tmp_path):
+    v, b = vb
+    (tmp_path / "locales").mkdir()
+    f = tmp_path / "locales" / "en.json"
+    f.write_text(json.dumps({"menu.start": "Start", "menu.quit": "Quit"}, indent=2) + "\n")
+    assert inject(v, b, f)["keys"]
+    g = tmp_path / "game.json"
+    g.write_text(json.dumps({"strings": {"a.one": "One", "a.two": "Two"}}, indent=2) + "\n")
+    assert inject(v, b, g)["keys"]
+    h = tmp_path / "game2.json"
+    h.write_text(json.dumps({"fr_FR": {"a.one": "Un", "a.two": "Deux"}}, indent=2) + "\n")
+    assert inject(v, b, h)["keys"]
+
+
+def test_two_injects_same_second_keep_both_backups(vb, tmp_path, monkeypatch):
+    from indieward import inject as inj, util
+    monkeypatch.setattr(util, "now_iso", lambda: "2026-01-01T00:00:00+00:00")
+    v, b = vb
+    f = tmp_path / "en.json"
+    f.write_text(json.dumps({"menu.start": "Start", "menu.quit": "Quit"}, indent=2) + "\n")
+    first = f.read_bytes()
+    r1 = inject(v, b, f, apply=True)
+    from indieward.inject import restore
+    restore(v, f, apply=True)  # back to the same bytes, in the same second: the backup name would collide
+    r2 = inject(v, b, f, apply=True)
+    assert r1["backup"] != r2["backup"]
+    assert Path(r1["backup"]).read_bytes() == first and Path(r2["backup"]).read_bytes() == first
+
+
+def test_restore_puts_back_original_and_refuses_after_edit(vb, tmp_path):
+    from indieward.inject import restore
+    v, b = vb
+    f = tmp_path / "en.json"
+    f.write_text(json.dumps({"menu.start": "Start", "menu.quit": "Quit"}, indent=2) + "\n")
+    original = f.read_bytes()
+    inject(v, b, f, apply=True)
+    injected = f.read_bytes()
+    plan = restore(v, f)
+    assert not plan["applied"] and f.read_bytes() == injected
+    assert restore(v, f, apply=True)["applied"]
+    assert f.read_bytes() == original
+    inject(v, b, f, apply=True)
+    f.write_bytes(f.read_bytes() + b" ")
+    with pytest.raises(InjectError, match="edited"):
+        restore(v, f, apply=True)
+    other = tmp_path / "other.json"
+    other.write_text("{}")
+    with pytest.raises(InjectError, match="nothing to restore"):
+        restore(v, other, apply=True)
+
+
+def test_restore_cli(vb, tmp_path, monkeypatch, capsys):
+    v, b = vb
+    f = tmp_path / "en.json"
+    f.write_text(json.dumps({"menu.start": "Start", "menu.quit": "Quit"}, indent=2) + "\n")
+    original = f.read_bytes()
+    inject(v, b, f, apply=True)
+    assert cli.main(["-C", str(tmp_path / "vault"), "traps", "inject", "--restore", str(f), "--apply"]) == 0
+    assert f.read_bytes() == original

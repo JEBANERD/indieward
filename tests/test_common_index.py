@@ -31,8 +31,9 @@ def _fps(*texts: str) -> dict:
 
 
 def _use_index(monkeypatch, **libs) -> None:
-    """Replace the shipped index with these libraries (name -> list of source texts)."""
-    entries = [{"name": name, "version": "1.0.0", "fingerprints": frozenset(_fps(*texts)["fingerprints"])}
+    """Replace the shipped index with these libraries (name -> list of build files' source texts)."""
+    entries = [{"name": name, "version": "1.0.0", "fingerprints": frozenset(_fps(*texts)["fingerprints"]),
+                "files": [frozenset(_fps(t)["fingerprints"]) for t in texts]}
                for name, texts in libs.items()]
     common_index._add_unique(entries)
     monkeypatch.setattr(common_index, "load", lambda: {"libraries": entries, "lines": frozenset()})
@@ -47,9 +48,11 @@ def _old_rule_trips(suspect_fps, lib_fps) -> bool:
 def test_shipped_index_has_fingerprints_and_licences_only():
     assert common_index.DATA.stat().st_size < 4 * 1024 * 1024  # size budget (P2-18)
     raw = json.loads(common_index.DATA.read_text(encoding="utf-8"))
+    assert raw["format"] == 2
     assert {lib["name"] for lib in raw["libraries"]} == LIBS
     for lib in raw["libraries"]:
         assert set(lib) == {"name", "version", "license", "tarball", "integrity", "files", "count", "fingerprints"}
+        assert all(set(f) == {"name", "count", "indices"} for f in lib["files"])
         assert lib["integrity"].startswith("sha512-") and lib["count"] > 1000
     assert {x["id"] for x in raw["licences"]} == {"MIT", "Apache-2.0", "BSD-3-Clause", "CC-BY-4.0", "OFL-1.1"}
     # fingerprints only: no library source text anywhere in the file
@@ -109,6 +112,37 @@ def test_real_bundles_still_detect(monkeypatch):
     names, exclude = common_index.detect(suspect["fingerprints"])
     assert "inner@1.0.0" in names and "other@1.0.0" not in names
     assert fp_code.compare(vault_build, suspect, exclude)["score"] == 0
+
+
+def test_library_detected_from_a_small_build_that_the_old_rule_missed(monkeypatch):
+    # Like Vue: a big development build and a small production build with little in common.
+    big, small = _fake_js(30, 5000), _fake_js(31, 300)
+    _use_index(monkeypatch, vue=[big, small], other=[_fake_js(32)])
+    lib = common_index.load()["libraries"][0]
+    assert len(lib["detect_files"]) == 2
+    suspect = _fps(small, _fake_js(3, 60))  # a game shipping only the small build
+    assert not _old_rule_trips(suspect["fingerprints"], lib["detect"])
+    names, exclude = common_index.detect(suspect["fingerprints"])
+    assert names == ["vue@1.0.0"] and exclude == lib["fingerprints"]  # all of the library is excluded
+    vault_build = _fps(small, _fake_js(2, 60))
+    assert fp_code.compare(vault_build, suspect, exclude)["score"] == 0
+    copy = _fps(small, _fake_js(2, 60))
+    assert fp_code.compare(vault_build, copy, common_index.detect(copy["fingerprints"])[1])["score"] >= 60
+    # a thin entry file (under MIN_SHARED fingerprints) can't detect the library on its own
+    thin = _fps(_fake_js(33, 10))["fingerprints"]
+    assert len(thin) < common_index.MIN_SHARED and common_index.detect(thin) == ([], set())
+
+
+def test_each_shipped_file_detects_only_its_library():
+    thin = 0
+    for lib in common_index.load()["libraries"]:
+        for fps in lib["files"]:
+            names = common_index.detect(fps)[0]
+            assert names in ([], [f"{lib['name']}@{lib['version']}"]), lib["name"]
+            if not names:
+                thin += 1
+                assert len(fps & lib["detect"]) < common_index.MIN_SHARED  # only thin entry files are missed
+    assert thin <= 2  # three.cjs and react-dom.production.js
 
 
 def test_each_shipped_library_detects_only_itself():

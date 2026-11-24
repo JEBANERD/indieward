@@ -65,3 +65,25 @@ def test_real_client_reads_proof_and_keeps_it_pending(tmp_path, local_tsa, monke
     timestamp.retry_pending(v)
     assert _ots_row(v)["status"] == "pending-bitcoin"
     assert path.read_bytes() == before
+
+
+WIN_CRASH = ('Traceback (most recent call last):\n  File "key.py", line 27, in <module>\n'
+             "TypeError: argument of type 'NoneType' is not iterable\n")
+
+
+def test_client_that_cannot_start_gets_plain_note(tmp_path, local_tsa, monkeypatch):
+    v = _pending_vault(tmp_path, local_tsa, monkeypatch)
+    proof = tmp_path / "x.ots"
+    proof.write_bytes(b"proof")
+    monkeypatch.setattr(timestamp.shutil, "which", lambda name: "/fake/ots")
+    monkeypatch.setattr(timestamp.subprocess, "run", lambda cmd, **kw: SimpleNamespace(
+        returncode=1, stdout="", stderr=WIN_CRASH))
+    r = timestamp._ots_upgrade(proof)
+    assert r["status"] == "pending-bitcoin" and "can't start" in r["note"] and "Traceback" not in r["note"]
+    assert proof.read_bytes() == b"proof"
+    assert [x["status"] for x in timestamp.retry_pending(v) if x["kind"] == "opentimestamps"] == ["pending-bitcoin"]
+
+
+def test_pending_message_is_not_a_startup_failure():
+    assert not timestamp.ots_failed_to_start(1, "Pending confirmation in Bitcoin blockchain")
+    assert timestamp.ots_failed_to_start(1, WIN_CRASH)

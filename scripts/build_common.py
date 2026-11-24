@@ -71,18 +71,36 @@ def pack(fps: set[int]) -> str:
     return base64.b64encode(zlib.compress(raw, 9)).decode()
 
 
+def pack_indices(idx: list[int]) -> str:
+    """Sorted positions in the library's sorted fingerprint list: delta varints, zlib, base64."""
+    out = bytearray()
+    prev = -1
+    for i in idx:
+        d = i - prev
+        prev = i
+        while d >= 0x80:
+            out.append(d & 0x7F | 0x80)
+            d >>= 7
+        out.append(d)
+    return base64.b64encode(zlib.compress(bytes(out), 9)).decode()
+
+
 def build() -> dict:
     libs = []
     for name, version, pattern in LIBS:
         info, tar = _tarball(name, version)
         rx = re.compile(pattern)
         fps: set[int] = set()
-        files = []
+        per_file: list[tuple[str, set[int]]] = []
         for m in sorted(tar.getmembers(), key=lambda m: m.name):
             if m.isfile() and rx.match(m.name):
                 text = tar.extractfile(m).read().decode("utf-8", "replace")
-                fps |= set(fp_code.winnow(fp_code.tokens_with_lines(text, m.name)))
-                files.append(m.name.removeprefix("package/"))
+                one = set(fp_code.winnow(fp_code.tokens_with_lines(text, m.name)))
+                fps |= one
+                per_file.append((m.name.removeprefix("package/"), one))
+        position = {h: i for i, h in enumerate(sorted(fps))}
+        files = [{"name": n, "count": len(f), "indices": pack_indices(sorted(position[h] for h in f))}
+                 for n, f in per_file]
         libs.append({**info, "files": files, "count": len(fps), "fingerprints": pack(fps)})
         print(f"{name}@{version}: {len(files)} files, {len(fps)} fingerprints", file=sys.stderr)
     info, tar = _tarball(*LICENCE_PKG)
@@ -91,7 +109,7 @@ def build() -> dict:
     for lid in LICENCES:
         lines = sorted({fp_text.normalize(x) for x in fp_text.split_lines(full[lid]["licenseText"])})
         licences.append({"id": lid, "lines": lines})
-    return {"format": 1, "generated_by": "scripts/build_common.py", "k": fp_code.K, "w": fp_code.W,
+    return {"format": 2, "generated_by": "scripts/build_common.py", "k": fp_code.K, "w": fp_code.W,
             "libraries": libs, "licence_source": {k: info[k] for k in ("name", "version", "license", "integrity")},
             "licences": licences}
 

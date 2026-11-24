@@ -31,15 +31,15 @@ Statuses: `todo` · `in-review` · `done` · `blocked` · `needs-jasper` (needs 
 | P3-02 | Release workflow (wheel + GitHub release; PyPI trusted publishing ready) | 3 | done | P1-03 | S |
 | P3-03 | Plugin directory submission prep (`validate --profile`, listing copy) | 3 | done | P1-00 | S |
 | P3-04 | Launch post drafts (itch devlog, Reddit, Discord) | 3 | done | P3-01 | S |
-| P2-16 | `traps inject` for Godot `.tres` translations | 2 | in-review | P2-09 | M |
+| P2-16 | `traps inject` for Godot `.tres` translations | 2 | done | P2-09 | M |
 | P2-17 | MCP tools for `watch` and `traps inject` (plan, then apply with a confirm code) | 2 | done | P4-01 | M |
 | P2-18 | More libraries in the common-material index (Babylon, React, Vue, jQuery, Kaboom, Excalibur) | 2 | done | P2-08 | M |
 | P2-19 | Detect bundled libraries by their unique fingerprints (stops generic-overlap false matches) | 2 | done | P2-18 | S |
 | P2-20 | Hook tests run on Windows (keep the environment when starting Python) | 2 | done | P2-11 | S |
 | P2-23 | Vault hook: catch `git` behind `&`, a full path or a prefix command (P2-13 bypasses) | 2 | done | P2-13 | S |
-| P2-21 | OpenTimestamps client on Windows: detect it's broken, say so plainly | 2 | todo | P1-03 | S |
-| P2-22 | Recognise a library from any one of its build files (Vue's production build is missed) | 2 | todo | P2-19 | M |
-| P2-25 | `traps inject` safety: gate JSON objects, unique backups, a restore command | 2 | todo | P2-09 | M |
+| P2-21 | OpenTimestamps client on Windows: detect it's broken, say so plainly | 2 | done | P1-03 | S |
+| P2-22 | Recognise a library from any one of its build files (Vue's production build is missed) | 2 | done | P2-19 | M |
+| P2-25 | `traps inject` safety: gate JSON objects, unique backups, a restore command | 2 | done | P2-09 | M |
 | P2-24 | Code fingerprint versions: pin today's tokens, warn when a registration predates them | 2 | in-review | P2-14 | M |
 | P3-06 | Bring the plugin listing privacy notes and launch posts up to date | 3 | todo | P4-01 | S |
 | P2-26 | Check the guide's EU decompilation and court wording against the official text | 2 | todo | P2-12 | S |

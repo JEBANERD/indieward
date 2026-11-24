@@ -67,7 +67,7 @@ indieward doctor
 
 If `indieward` isn't on PyPI yet when you read this, install straight from GitHub instead: `pipx install "indieward[mcp] @ git+https://github.com/JEBANERD/indieward"`.
 
-Optional: `pipx inject --include-apps indieward opentimestamps-client` adds the official `ots` client, which upgrades your OpenTimestamps proofs once Bitcoin confirms them.
+Optional: `pipx inject --include-apps indieward opentimestamps-client` adds the official `ots` client, which upgrades your OpenTimestamps proofs once Bitcoin confirms them. The official client may not start on Windows (it fails while loading OpenSSL); your proof stays safe and pending, and you can upgrade the same `.ots` file later on macOS, Linux or WSL. `indieward doctor` tells you if it can't start.
 
 ### From source
 

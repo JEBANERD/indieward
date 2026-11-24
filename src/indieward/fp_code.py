@@ -16,6 +16,11 @@ import hashlib
 import re
 from pathlib import Path
 
+# Tokenizer version stored with every code fingerprint. Registrations without it are version 1 (before #30,
+# when every comment rule applied to every file). Version 2 picks comment rules by file type. Bump this when
+# tokens_with_lines changes, and update the golden tests in tests/test_fp_code.py on purpose.
+FP_CODE_VERSION = 2
+
 K = 12  # tokens per k-gram
 W = 8  # winnowing window
 
@@ -123,7 +128,7 @@ def fingerprint_files(paths) -> dict:
         files[p.name] = len(toks)
         for h, line in winnow(toks).items():
             fps.setdefault(str(h), [p.name, line])
-    return {"k": K, "w": W, "fingerprints": fps, "files": files}
+    return {"k": K, "w": W, "version": FP_CODE_VERSION, "fingerprints": fps, "files": files}
 
 
 def fingerprint_text_blobs(blobs: dict[str, str]) -> dict:
@@ -131,7 +136,7 @@ def fingerprint_text_blobs(blobs: dict[str, str]) -> dict:
     for name, text in blobs.items():
         for h, line in winnow(tokens_with_lines(text, name)).items():
             fps.setdefault(str(h), [name, line])
-    return {"k": K, "w": W, "fingerprints": fps, "files": {n: 0 for n in blobs}}
+    return {"k": K, "w": W, "version": FP_CODE_VERSION, "fingerprints": fps, "files": {n: 0 for n in blobs}}
 
 
 def compare(orig: dict, suspect: dict, common: set[str] | None = None) -> dict:

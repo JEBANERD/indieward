@@ -47,6 +47,9 @@ def status(v) -> dict:
         "checks": v.db.execute("SELECT COUNT(*) FROM checks").fetchone()[0],
         "takedowns": [dict(r) for r in v.db.execute("SELECT check_id, store, status, created_at FROM takedowns")],
     }
+    from . import registry
+    if registry.code_fp_outdated(v):
+        s["code_fingerprints"] = registry.OLD_FP_NOTE
     if p["first_published"]:
         d = dt.date.fromisoformat(p["first_published"])
         deadline = d + dt.timedelta(days=90)

@@ -2,7 +2,7 @@
 
 Copy for Anthropic's plugin directory submission. Jasper submits; nothing here has been sent.
 
-Validation: `claude plugin validate plugin --profile directory --strict` passes with nothing to report (Claude Code 2.1.312). The directory also runs a safety scan and policy review that the local command doesn't.
+Validation: `claude plugin validate plugin --profile directory --strict` passed with nothing to report (Claude Code 2.1.312). The directory also runs a safety scan and policy review that the local command doesn't.
 
 ## Name
 IndieWard
@@ -36,10 +36,17 @@ Suggested: game development (pick the closest category the form offers). Keyword
 Use a test game or your own game; don't show real trap values, API keys or a real suspect's name.
 
 ## Privacy notes
-- **Local only.** The vault, keys, registrations, check reports and packages stay in your project folder (`.indieward/`, `indieward_out/`). IndieWard has no account, server or telemetry and collects no data.
+- **Local by default.** The vault, keys, registrations, check reports and packages stay in your project folder (`.indieward/`, `indieward_out/`). IndieWard has no account, server or telemetry and collects no data. The optional features below do talk to third parties (GitHub, npm, Software Heritage, Adobe's model host); IndieWard itself never receives anything.
 - **Network requests it makes, only when you run the matching step:**
   - Timestamping: only a SHA-256 digest goes to FreeTSA and the OpenTimestamps calendars. Offline, the timestamp stays pending.
   - Store ownership: one request to the store page or official store API you name. A Steamworks or itch.io API key, if you choose that method, is used once and never stored.
   - Checking a suspect: one read of the suspect's store page and up to 12 of its images. No crawling.
+  - `indieward watch run` (optional; you run it, nothing is scheduled). Official APIs only, one HTTPS request per search string or hash:
+    - **Software Heritage** (`archive.softwareheritage.org`): the default source. Sends the SHA-1 of each stored trap snippet file and the SHA-256 of each hidden-asset trap. Hashes only, no readable text.
+    - **GitHub code search** (`api.github.com`): opt-in, needs your own `GITHUB_TOKEN` and `--accept-disclosure`. Sends each searched string in plain text: build-level trap strings and your public copyright notice line (shared "core" traps only if you add `--include-core`). GitHub can see those strings in its logs.
+    - **npm registry search** (`registry.npmjs.org`): opt-in, needs `--accept-disclosure`. Sends the same kind of strings (build traps; the notice line is not sent). npm can see them in its logs.
+    - Hits are saved in your vault as leads to review. Nothing is filed or sent.
+  - Optional TrustMark image backend (`pip install "indieward[trustmark]"`): the first use downloads TrustMark's model weights from Adobe's published host (`cai-watermark.adobe.net`) and checks their published MD5 checksums, refusing to run on a mismatch. Nothing about your files is sent. The built-in watermark makes no request.
+  - Everything else (registering, trapping, notices, packaging) makes no network request except the ones above.
 - **No sending.** No tool sends email, submits forms or contacts stores, and a PreToolUse hook tries to stop Claude doing so with other tools (best effort; you can turn hooks off).
 - **Traps** are inert values that never touch the network or player data.

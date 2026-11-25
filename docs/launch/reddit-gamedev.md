@@ -13,6 +13,8 @@ What it does is cut the time between "there's a clone of my game" and "a correct
 - Drafts DMCA or trademark notices and checklists for Steam, itch.io and Roblox. It never sends them; you do.
 - Before anything is registered, you have to prove you control the game's store page. That makes it harder to use against the real creator.
 
+Also: watermarks can be stripped, traps can be found and removed by a careful cloner, and fingerprints miss full rewrites.
+
 Everything runs on your machine. No account, no telemetry. MIT licensed.
 
 Install (Python 3.10+, FFmpeg):

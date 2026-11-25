@@ -1,7 +1,7 @@
 <!-- Draft for r/IndieDev. Not posted. Check the subreddit's self-promotion rules first. -->
 # Made a free tool so a clone of your game doesn't cost you a week
 
-**Title option:** "If your game gets cloned, this gets your takedown ready the same day (free, open source)"
+**Title option:** "A free, open-source toolkit that prepares an evidence and takedown package if your game gets cloned"
 
 Let me start with the limits, because they matter. Nothing can stop someone ripping or AI-rebuilding a released game. Builds run on players' machines, and footage is just pixels. IndieWard doesn't block anything, and it can't prove an AI was involved.
 
@@ -11,6 +11,8 @@ What it gives you:
 2. **Marks on what you post:** invisible watermarks on media, plus harmless trap markers in builds that never touch gameplay or players.
 3. **A fair check of the suspect:** scores per category with Strong / Supporting / Weak labels. If all it found is similar mechanics, it tells you not to file. Copyright doesn't cover mechanics.
 4. **A ready-to-send package:** notice, evidence and checklist for Steam, itch.io or Roblox. You send it from your own account; IndieWard never does.
+
+Watermarks can be stripped, traps can be found and removed, and fingerprints miss full rewrites.
 
 It's free, MIT licensed, and runs locally. There's also a Claude plugin that walks you through it.
 

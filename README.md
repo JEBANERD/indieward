@@ -148,3 +148,5 @@ All code is open source (MIT). What stays private is each creator's own data on 
 ## License
 
 MIT. See [LICENSE](LICENSE). Forks are welcome; the IndieWard name is reserved for builds that keep its safety rules (see [TRADEMARKS.md](TRADEMARKS.md)).
+
+**What IndieWard makes for you is yours.** The trap snippets and files from `indieward traps`, the keys `traps inject` adds to your data files, your watermarked copies, notices, certificates and takedown drafts can go into any game or project, open or closed source, without crediting IndieWard or including its licence. Where that output contains text from IndieWard's own templates, the IndieWard contributors license that text to you under [MIT-0](https://opensource.org/license/mit-0), which is MIT without the requirement to keep the notice. The MIT licence covers IndieWard's own code.

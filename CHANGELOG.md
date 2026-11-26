@@ -9,6 +9,7 @@ To release: put the date on the version's heading (or add a new `## [x.y.z] - YY
 First public release.
 
 ### Added
+- Licence note in the README: what IndieWard generates (trap snippets, injected keys, watermarked copies, notices, certificates, takedown drafts) is the creator's to ship in any game, open or closed, with no credit needed. Template text in that output is licensed under MIT-0.
 - Store verification gate: registering, trapping, checking, certifying and packaging all need a verified Steam, itch.io or Roblox page.
 - Registration of art, audio, video, code, story text and builds, with a certificate signed by the creator's key and timestamped by an RFC 3161 authority and by OpenTimestamps.
 - IW-Mark v1 invisible watermarks for images, audio and video (open format, 40-bit record ID plus a 24-bit MAC).
